@@ -1,0 +1,9 @@
+# Trivy vulnerability suppressions (CVE / vuln IDs only).
+#
+# Policy:
+# - One ID per line; optional end-of-line comment with rationale + review/expiry date.
+# - Do not use wildcards or disable entire scanners here — that hides real issues.
+# - Record the same rationale in docs/TESTING.md or the PR so reviewers can audit.
+#
+# Example (remove leading # when adding a real reviewed suppression):
+# CVE-2024-12345678  # reason: not applicable / fixed in next base image bump; review-by 2026-06-01

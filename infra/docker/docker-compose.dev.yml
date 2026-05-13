@@ -1,0 +1,73 @@
+# Local development overlay: publishes DB/Redis (and admin tools) on loopback only,
+# supplies non-production convenience defaults. Not for untrusted networks.
+#
+#   docker compose --env-file .env -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.dev.yml up -d
+#
+# Defaults below are for local workstations only — change POSTGRES_PASSWORD / JWT_SECRET / UI passwords for shared machines.
+
+services:
+  chexi-db:
+    ports:
+      - "${POSTGRES_PUBLISH_HOST:-127.0.0.1}:${POSTGRES_PUBLISH_PORT:-5432}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-chexi_dev}
+      # Keep Postgres init password aligned with API DB_PASS when only one is set in `.env`.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-${DB_PASS:-chexi_dev_password_change_me}}
+      POSTGRES_DB: ${POSTGRES_DB:-chexi}
+
+  chexi-redis:
+    ports:
+      - "${REDIS_PUBLISH_HOST:-127.0.0.1}:${REDIS_PUBLISH_PORT:-6379}:6379"
+
+  chexi-api:
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      DB_SSLMODE: ${DB_SSLMODE:-disable}
+      DB_USER: ${DB_USER:-chexi_dev}
+      DB_PASS: ${DB_PASS:-${POSTGRES_PASSWORD:-chexi_dev_password_change_me}}
+      DB_NAME: ${DB_NAME:-chexi}
+      JWT_SECRET: ${JWT_SECRET:-local-dev-only-jwt-secret-minimum-32-characters}
+      # Dev-only 32-byte AES key (base64) so POST /mfa/totp/* works in Docker without extra .env wiring.
+      MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY:-AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=}
+
+  redis-commander:
+    # Pin digest (upstream publishes only `latest`; tag updates rarely). See infra/docker/README.md.
+    image: rediscommander/redis-commander@sha256:19cd0c49f418779fa2822a0496c5e6516d0c792effc39ed20089e6268477e40a
+    restart: unless-stopped
+    ports:
+      - "${REDIS_COMMANDER_PUBLISH_HOST:-127.0.0.1}:${REDIS_COMMANDER_PORT:-8081}:8081"
+    environment:
+      REDIS_HOSTS: local:chexi-redis:6379
+      HTTP_USER: ${REDIS_COMMANDER_HTTP_USER:-chexi}
+      HTTP_PASSWORD: ${REDIS_COMMANDER_HTTP_PASSWORD:-dev_only_redis_commander_pw_change_me}
+    depends_on:
+      chexi-redis:
+        condition: service_healthy
+    networks:
+      - chexi_trading_network
+    security_opt:
+      - no-new-privileges:true
+
+  pgadmin:
+    image: dpage/pgadmin4:9.14.0
+    restart: unless-stopped
+    ports:
+      - "${PGADMIN_PUBLISH_HOST:-127.0.0.1}:${PGADMIN_PUBLISH_PORT:-5050}:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin-dev@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-dev_only_pgadmin_password_change_me}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    volumes:
+      - chexi_trading_pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      chexi-db:
+        condition: service_healthy
+    networks:
+      - chexi_trading_network
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  chexi_trading_pgadmin_data:
+    driver: local

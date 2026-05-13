@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+# Pin scanner versions for reproducible CI; bump intentionally when adopting new rules.
+env:
+  GOVULNCHECK_VERSION: v1.1.4
+  GOSEC_VERSION: v2.22.0
+  GITLEAKS_VERSION: v8.21.2
+  # aquasec/trivy image tag (no leading v).
+  TRIVY_VERSION: "0.58.2"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # Only tracked .go files — matches local `make fmt-check`
+      - name: gofmt
+        run: |
+          files=$(git ls-files '*.go')
+          bad=$(gofmt -s -l $files)
+          if [ -n "$bad" ]; then
+            echo "::error::gofmt needed on:"
+            echo "$bad"
+            exit 1
+          fi
+
+      - name: Verify module, vet, build
+        run: |
+          go mod verify
+          go vet ./...
+          go build ./...
+
+      # Fails on reachable vulnerabilities (default govulncheck behavior).
+      - name: govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@${{ env.GOVULNCHECK_VERSION }}
+          "$(go env GOPATH)/bin/govulncheck" ./...
+
+      # Medium severity/confidence reduces low-confidence noise; tighten later as findings are cleared.
+      # -exclude-dir=api/openapi: generated Swagger may trigger false positives (G304 etc.).
+      - name: gosec
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@${{ env.GOSEC_VERSION }}
+          "$(go env GOPATH)/bin/gosec" \
+            -fmt text \
+            -severity medium \
+            -confidence medium \
+            -exclude-dir=api/openapi \
+            ./...
+
+      - name: Unit tests (race detector)
+        run: go test -race ./...
+
+  # Requires Docker + Compose (same as local `make test-integration`).
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run integration tests
+        run: make test-integration
+
+  # Secret scanning — matches local `make secret-scan`.
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: gitleaks
+        run: |
+          go install github.com/zricethezav/gitleaks/v8@${{ env.GITLEAKS_VERSION }}
+          "$(go env GOPATH)/bin/gitleaks" detect --source . --config .gitleaks.toml --redact
+
+  # Container + dependency scanning — matches local `make container-scan`.
+  container-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build API image
+        run: docker build -f docker/Dockerfile -t chexi-trading-api:scan .
+
+      - name: Trivy filesystem (repo / dependencies)
+        run: |
+          docker run --rm \
+            -v "$PWD:/repo:ro" \
+            -w /repo \
+            aquasec/trivy:${{ env.TRIVY_VERSION }} \
+            fs --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --ignorefile .trivyignore .
+
+      - name: Trivy image (built API image)
+        run: |
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            -v "$PWD/.trivyignore:/tmp/trivyignore:ro" \
+            aquasec/trivy:${{ env.TRIVY_VERSION }} \
+            image --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --ignorefile /tmp/trivyignore chexi-trading-api:scan

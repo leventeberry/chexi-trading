@@ -1,0 +1,45 @@
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Go build and test artifacts (do not use bare `goapi` — that ignores apps/goapi/)
+/goapi
+apps/goapi/goapi
+goapi.exe
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+coverage.html
+coverage.out
+
+# Go workspace checksums can be regenerated.
+go.work.sum
+
+# Node dependencies and build outputs for future apps/packages
+node_modules/
+.next/
+dist/
+build/
+pnpm-debug.log*
+
+# Logs and temporary files
+*.log
+tmp/
+temp/
+*.tmp
+
+# Editor and OS files
+.cursor/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+nul

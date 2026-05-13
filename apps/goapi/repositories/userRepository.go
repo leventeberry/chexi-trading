@@ -1,0 +1,145 @@
+package repositories
+
+import (
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/google/uuid"
+	"goapi/internal/rbac"
+	"goapi/models"
+	"gorm.io/gorm"
+)
+
+// userRepository implements UserRepository interface
+type userRepository struct {
+	db *gorm.DB
+}
+
+// NewUserRepository creates a new instance of UserRepository
+// Factory function for creating user repository
+func NewUserRepository(db *gorm.DB) UserRepository {
+	return &userRepository{
+		db: db,
+	}
+}
+
+// normalizeEmail normalizes email to lowercase and trims whitespace
+func normalizeEmail(email string) string {
+	return strings.ToLower(strings.TrimSpace(email))
+}
+
+// Create inserts a new user into the database
+func (r *userRepository) Create(user *models.User) error {
+	// Normalize email before saving
+	user.Email = normalizeEmail(user.Email)
+	if user.ID == uuid.Nil {
+		user.ID = uuid.New()
+	}
+	if err := r.db.Create(user).Error; err != nil {
+		return fmt.Errorf("failed to create user: %w", err)
+	}
+	return nil
+}
+
+// FindByID retrieves a user by their ID
+func (r *userRepository) FindByID(id uuid.UUID) (*models.User, error) {
+	var user models.User
+	err := r.db.First(&user, "id = ?", id).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("failed to find user by ID %s: %w", id, err)
+	}
+	return &user, nil
+}
+
+// FindByEmail retrieves a user by their email
+func (r *userRepository) FindByEmail(email string) (*models.User, error) {
+	// Normalize email for case-insensitive lookup
+	email = normalizeEmail(email)
+	var user models.User
+	// Use LOWER() for defensive case-insensitive matching (handles existing mixed-case data)
+	err := r.db.Where("LOWER(email) = LOWER(?)", email).First(&user).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, fmt.Errorf("failed to find user by email %s: %w", email, err)
+	}
+	return &user, nil
+}
+
+// FindAll retrieves all users from the database
+func (r *userRepository) FindAll() ([]models.User, error) {
+	var users []models.User
+	if err := r.db.Find(&users).Error; err != nil {
+		return nil, fmt.Errorf("failed to find all users: %w", err)
+	}
+	return users, nil
+}
+
+// FindAllWithPagination retrieves users with pagination support
+func (r *userRepository) FindAllWithPagination(page, pageSize int) ([]models.User, int64, error) {
+	var users []models.User
+	var total int64
+
+	// Count total records
+	if err := r.db.Model(&models.User{}).Count(&total).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to count users: %w", err)
+	}
+
+	// Calculate offset
+	offset := (page - 1) * pageSize
+
+	// Retrieve paginated users
+	if err := r.db.Offset(offset).Limit(pageSize).Find(&users).Error; err != nil {
+		return nil, 0, fmt.Errorf("failed to find paginated users (page %d, pageSize %d): %w", page, pageSize, err)
+	}
+
+	return users, total, nil
+}
+
+// Update persists all scalar fields on the user row (including empty strings),
+// excluding associations. Callers load the user first and mutate fields in memory.
+func (r *userRepository) Update(user *models.User) error {
+	user.Email = normalizeEmail(user.Email)
+	if err := r.db.Session(&gorm.Session{FullSaveAssociations: false}).Save(user).Error; err != nil {
+		return fmt.Errorf("failed to update user ID %s: %w", user.ID, err)
+	}
+	return nil
+}
+
+// Delete removes a user from the database
+func (r *userRepository) Delete(id uuid.UUID) error {
+	result := r.db.Delete(&models.User{}, "id = ?", id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
+
+// ExistsByEmail checks if a user with the given email exists
+func (r *userRepository) ExistsByEmail(email string) (bool, error) {
+	// Normalize email for case-insensitive lookup
+	email = normalizeEmail(email)
+	var count int64
+	// Use LOWER() for defensive case-insensitive matching (handles existing mixed-case data)
+	if err := r.db.Model(&models.User{}).Where("LOWER(email) = LOWER(?)", email).Count(&count).Error; err != nil {
+		return false, fmt.Errorf("failed to check if email %s exists: %w", email, err)
+	}
+	return count > 0, nil
+}
+
+// ExistsAnyAdmin returns true if at least one user has the admin role.
+func (r *userRepository) ExistsAnyAdmin() (bool, error) {
+	var count int64
+	if err := r.db.Model(&models.User{}).Where("role = ?", rbac.RoleAdmin.String()).Count(&count).Error; err != nil {
+		return false, fmt.Errorf("failed to check for admin users: %w", err)
+	}
+	return count > 0, nil
+}

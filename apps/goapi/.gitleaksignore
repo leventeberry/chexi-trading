@@ -1,0 +1,9 @@
+# Fingerprints from `gitleaks detect` for benign / placeholder matches only.
+# Each line must be the exact fingerprint string (commit : path : rule : line).
+# See docs/TESTING.md — Secret scanning (gitleaks).
+
+# Historical root TESTING.md curl example — placeholder ADMIN_TOKEN (docs moved under docs/).
+8e12ea78ddd5a4d95d4d0c89363aa442ce5d0445:TESTING.md:curl-auth-header:83
+
+# Historical commit — replaced JWT test fixture with non-hex placeholder above.
+ffe8823bad2397d15f8cc1e330b3279259506d15:services/oauth_test.go:generic-api-key:40

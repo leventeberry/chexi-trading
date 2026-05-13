@@ -1,0 +1,162 @@
+# Hardened baseline: no weak credential fallbacks, DB/Redis not published to the host,
+# no admin UIs. Use with docker-compose.dev.yml for local developer ergonomics.
+#
+# Set secrets via environment or --env-file docker/.env. Variables use plain ${VAR} (no
+# compose-side :- defaults) so this file stays safe to copy; docker-compose.dev.yml supplies
+# local defaults. Baseline-only: every variable below must be non-empty or Postgres/API will fail at runtime.
+
+name: ${COMPOSE_PROJECT_NAME:-chexi-trading-goapi}
+
+services:
+  chexi-db:
+    image: postgres:16.13-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - chexi_trading_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - chexi_trading_network
+    security_opt:
+      - no-new-privileges:true
+
+  chexi-redis:
+    image: redis:7.4.9-alpine3.21
+    restart: unless-stopped
+    volumes:
+      - chexi_trading_redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - chexi_trading_network
+    security_opt:
+      - no-new-privileges:true
+
+  chexi-api:
+    image: chexi-trading-api:latest
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${API_PUBLISH_HOST:-127.0.0.1}:${API_PUBLISH_PORT:-8080}:8080"
+    environment:
+      HOME: /tmp
+      GOCACHE: /tmp/go-build
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      DB_HOST: ${DB_HOST:-chexi-db}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME}
+      DB_SSLMODE: "${DB_SSLMODE:?Set DB_SSLMODE}"
+      JWT_SECRET: ${JWT_SECRET}
+      PORT: ${PORT:-8080}
+      REDIS_ENABLED: ${REDIS_ENABLED:-true}
+      REDIS_HOST: ${REDIS_HOST:-chexi-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      AUTH_RESPONSE_INCLUDE_API_KEY: ${AUTH_RESPONSE_INCLUDE_API_KEY:-false}
+      AUTH_RESPONSE_INCLUDE_USER: ${AUTH_RESPONSE_INCLUDE_USER:-false}
+      APP_ENV: "${APP_ENV:?Set APP_ENV}"
+      # Transactional email (must be listed here or docker/.env values never reach the API process)
+      EMAIL_ENABLED: ${EMAIL_ENABLED:-true}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-log}
+      EMAIL_FROM: ${EMAIL_FROM:-noreply@localhost}
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-}
+      EMAIL_VERIFICATION_TTL_HOURS: ${EMAIL_VERIFICATION_TTL_HOURS:-48}
+      EMAIL_PASSWORD_RESET_TTL_HOURS: ${EMAIL_PASSWORD_RESET_TTL_HOURS:-1}
+      EMAIL_RESEND_MIN_INTERVAL_SECONDS: ${EMAIL_RESEND_MIN_INTERVAL_SECONDS:-60}
+      ORG_INVITATION_TTL_HOURS: ${ORG_INVITATION_TTL_HOURS:-168}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_REDIRECT_ALL_TO: ${EMAIL_REDIRECT_ALL_TO:-}
+      # Optional API configuration (set in docker/.env — see docker/.env.example)
+      LOG_LEVEL: ${LOG_LEVEL:-}
+      HTTP_READ_HEADER_TIMEOUT_SEC: ${HTTP_READ_HEADER_TIMEOUT_SEC:-}
+      HTTP_READ_TIMEOUT_SEC: ${HTTP_READ_TIMEOUT_SEC:-}
+      HTTP_WRITE_TIMEOUT_SEC: ${HTTP_WRITE_TIMEOUT_SEC:-}
+      HTTP_IDLE_TIMEOUT_SEC: ${HTTP_IDLE_TIMEOUT_SEC:-}
+      SWAGGER_HOST: ${SWAGGER_HOST:-}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-}
+      JWT_EXPIRATION_DAYS: ${JWT_EXPIRATION_DAYS:-}
+      JWT_ACCESS_TOKEN_MINUTES: ${JWT_ACCESS_TOKEN_MINUTES:-}
+      JWT_REFRESH_EXPIRATION_HOURS: ${JWT_REFRESH_EXPIRATION_HOURS:-}
+      RATE_LIMIT_REQUESTS_PER_MINUTE: ${RATE_LIMIT_REQUESTS_PER_MINUTE:-}
+      RATE_LIMIT_BURST_SIZE: ${RATE_LIMIT_BURST_SIZE:-}
+      RATE_LIMIT_REDIS_FAILURE_MODE: ${RATE_LIMIT_REDIS_FAILURE_MODE:-}
+      SECURITY_HEADERS_ENABLED: ${SECURITY_HEADERS_ENABLED:-}
+      HSTS_ENABLED: ${HSTS_ENABLED:-}
+      HSTS_MAX_AGE_SECONDS: ${HSTS_MAX_AGE_SECONDS:-}
+      HSTS_INCLUDE_SUBDOMAINS: ${HSTS_INCLUDE_SUBDOMAINS:-}
+      AUDIT_HTTP_ENABLED: ${AUDIT_HTTP_ENABLED:-}
+      AUDIT_HTTP_MUTATING_ONLY: ${AUDIT_HTTP_MUTATING_ONLY:-}
+      EVENT_TELEMETRY_RATE_LIMIT_RPM: ${EVENT_TELEMETRY_RATE_LIMIT_RPM:-}
+      EVENT_TELEMETRY_BURST_SIZE: ${EVENT_TELEMETRY_BURST_SIZE:-}
+      USE_VERSIONED_MIGRATIONS: ${USE_VERSIONED_MIGRATIONS:-}
+      MIGRATIONS_DIR: ${MIGRATIONS_DIR:-}
+      QUEUE_ENABLED: ${QUEUE_ENABLED:-}
+      QUEUE_ASYNC_ENABLED: ${QUEUE_ASYNC_ENABLED:-}
+      JOB_QUEUE_ENABLED: ${JOB_QUEUE_ENABLED:-}
+      JOB_WORKER_ENABLED: ${JOB_WORKER_ENABLED:-}
+      JOB_MAX_ATTEMPTS: ${JOB_MAX_ATTEMPTS:-}
+      JOB_RETRY_DELAY_SECONDS: ${JOB_RETRY_DELAY_SECONDS:-}
+      QUEUE_WORKERS: ${QUEUE_WORKERS:-}
+      QUEUE_POLL_INTERVAL_MS: ${QUEUE_POLL_INTERVAL_MS:-}
+      QUEUE_MAX_ATTEMPTS: ${QUEUE_MAX_ATTEMPTS:-}
+      QUEUE_INITIAL_BACKOFF_MS: ${QUEUE_INITIAL_BACKOFF_MS:-}
+      QUEUE_MAX_BACKOFF_MS: ${QUEUE_MAX_BACKOFF_MS:-}
+      QUEUE_SHUTDOWN_TIMEOUT_SEC: ${QUEUE_SHUTDOWN_TIMEOUT_SEC:-}
+      QUEUE_DEAD_LETTER_MAX_CAP: ${QUEUE_DEAD_LETTER_MAX_CAP:-}
+      MFA_ENCRYPTION_KEY: ${MFA_ENCRYPTION_KEY:-}
+      MFA_CHALLENGE_TTL_MINUTES: ${MFA_CHALLENGE_TTL_MINUTES:-}
+      MFA_RECOVERY_CODE_COUNT: ${MFA_RECOVERY_CODE_COUNT:-}
+      MFA_TOTP_ISSUER: ${MFA_TOTP_ISSUER:-}
+      WEBHOOK_ENCRYPTION_KEY: ${WEBHOOK_ENCRYPTION_KEY:-}
+      OAUTH_GOOGLE_ENABLED: ${OAUTH_GOOGLE_ENABLED:-}
+      OAUTH_GITHUB_ENABLED: ${OAUTH_GITHUB_ENABLED:-}
+      OAUTH_GOOGLE_CLIENT_ID: ${OAUTH_GOOGLE_CLIENT_ID:-}
+      OAUTH_GOOGLE_CLIENT_SECRET: ${OAUTH_GOOGLE_CLIENT_SECRET:-}
+      OAUTH_GITHUB_CLIENT_ID: ${OAUTH_GITHUB_CLIENT_ID:-}
+      OAUTH_GITHUB_CLIENT_SECRET: ${OAUTH_GITHUB_CLIENT_SECRET:-}
+      OAUTH_REDIRECT_BASE_URL: ${OAUTH_REDIRECT_BASE_URL:-}
+      OAUTH_STATE_TTL_MINUTES: ${OAUTH_STATE_TTL_MINUTES:-}
+      OAUTH_EXCHANGE_TTL_MINUTES: ${OAUTH_EXCHANGE_TTL_MINUTES:-}
+      BOOTSTRAP_ADMIN_ENABLED: ${BOOTSTRAP_ADMIN_ENABLED:-}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+    depends_on:
+      chexi-db:
+        condition: service_healthy
+      chexi-redis:
+        condition: service_healthy
+    networks:
+      - chexi_trading_network
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+
+volumes:
+  chexi_trading_postgres_data:
+    driver: local
+  chexi_trading_redis_data:
+    driver: local
+
+networks:
+  chexi_trading_network:
+    driver: bridge

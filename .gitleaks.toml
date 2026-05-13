@@ -1,0 +1,13 @@
+# Chexi — gitleaks configuration
+#
+# Uses the built-in rule set shipped with gitleaks. Tune allowlists here only for
+# documented false positives (never blanket-disable categories repo-wide).
+#
+# False positives: prefer `.gitleaksignore` (fingerprints from `gitleaks detect`).
+# See docs/TESTING.md — Secret scanning (gitleaks).
+
+title = "Chexi gitleaks"
+
+[extend]
+# Merge with gitleaks default rules embedded in the binary.
+useDefault = true
