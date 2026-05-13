@@ -8,8 +8,8 @@ Web-based Redis management interface for viewing and managing Redis cache data.
 
 ### Access
 
-- **URL**: http://127.0.0.1:8081 (or the host/port from `REDIS_COMMANDER_PORT` / `REDIS_COMMANDER_PUBLISH_HOST` in `docker/.env`)
-- **Username / password**: `REDIS_COMMANDER_HTTP_USER` / `REDIS_COMMANDER_HTTP_PASSWORD` (see `docker/.env.example`; dev overlay supplies non-production defaults if unset)
+- **URL**: http://127.0.0.1:8081 (or the host/port from `REDIS_COMMANDER_PORT` / `REDIS_COMMANDER_PUBLISH_HOST` in the repository root `.env`)
+- **Username / password**: `REDIS_COMMANDER_HTTP_USER` / `REDIS_COMMANDER_HTTP_PASSWORD` (see repository root `.env.example`; dev overlay supplies non-production defaults if unset)
 
 ### Features
 
@@ -37,7 +37,7 @@ Web-based Redis management interface for viewing and managing Redis cache data.
    # Or open http://127.0.0.1:8081
    ```
 
-3. Log in with the credentials from your `docker/.env` (or the dev-overlay defaults documented in `docker/.env.example`).
+3. Log in with the credentials from your **repository root** `.env` (or the dev-overlay defaults documented in `.env.example`).
 
 ### Common Tasks
 
@@ -61,7 +61,7 @@ Web-based PostgreSQL administration and development platform.
 ### Access
 
 - **URL**: http://127.0.0.1:5050 (or `PGADMIN_PUBLISH_PORT` / `PGADMIN_PUBLISH_HOST`)
-- **Email / password**: `PGADMIN_DEFAULT_EMAIL` / `PGADMIN_DEFAULT_PASSWORD` in `docker/.env`
+- **Email / password**: `PGADMIN_DEFAULT_EMAIL` / `PGADMIN_DEFAULT_PASSWORD` in the repository root `.env`
 
 ### Features
 
@@ -88,7 +88,7 @@ Web-based PostgreSQL administration and development platform.
    make docker-open-pgadmin
    ```
 
-3. Log in with the email/password from `docker/.env`.
+3. Log in with the email/password from the **repository root** `.env`.
 
 ### Setting Up Database Connection
 
@@ -104,7 +104,7 @@ After logging in, register a server:
    - Port: `5432`
    - Maintenance database: value of `POSTGRES_DB` (e.g. `goapi`)
    - Username: `POSTGRES_USER` (e.g. `goapi_dev` with dev defaults)
-   - Password: `POSTGRES_PASSWORD` from `docker/.env`
+   - Password: `POSTGRES_PASSWORD` from the **repository root** `.env`
    - Check "Save password"
 
 4. Click "Save"
@@ -164,11 +164,11 @@ make docker-logs-pgadmin
 
 ### Port conflicts
 
-Set alternate host ports via `docker/.env`, for example:
+Set alternate host ports via the **repository root** `.env`, for example:
 
 ```env
 REDIS_COMMANDER_PORT=8082
 PGADMIN_PUBLISH_PORT=5051
 ```
 
-See comments in `docker/.env.example`.
+See comments in the repository root `.env.example`.

@@ -10,9 +10,14 @@ Monorepo for **chexi-trading**: crypto trading analysis with a Go API, data inge
 | Admin UI (Vite/React today) | [`apps/shadcn-admin`](apps/shadcn-admin) |
 | Docker Compose (local) | [`infra/docker`](infra/docker) |
 
+## Prerequisites
+
+- **Node.js** [24.x](https://nodejs.org/) or newer — enforced in root [`package.json`](package.json) (`engines.node`); major **24** is recorded in [`.nvmrc`](.nvmrc) and [`.node-version`](.node-version) for version managers.
+- **pnpm** 10.x — see `packageManager` in [`package.json`](package.json) (use `corepack enable` so the correct pnpm is used).
+
 ## Local development
 
-1. Copy [`.env.example`](.env.example) to `.env` at the repo root and adjust secrets.
+1. Copy [`.env.example`](.env.example) to `.env` at the repo root and adjust secrets. The Go API, Docker Compose, and the admin Vite app all read this one file (API via automatic root detection; Vite uses `envDir` pointed at the repo root).
 2. Start the stack:
 
    ```sh

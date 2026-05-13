@@ -1,7 +1,7 @@
 # Hardened baseline: no weak credential fallbacks, DB/Redis not published to the host,
 # no admin UIs. Use with docker-compose.dev.yml for local developer ergonomics.
 #
-# Set secrets via environment or --env-file docker/.env. Variables use plain ${VAR} (no
+# Set secrets via environment or repository-root --env-file .env. Variables use plain ${VAR} (no
 # compose-side :- defaults) so this file stays safe to copy; docker-compose.dev.yml supplies
 # local defaults. Baseline-only: every variable below must be non-empty or Postgres/API will fail at runtime.
 
@@ -71,7 +71,7 @@ services:
       AUTH_RESPONSE_INCLUDE_API_KEY: ${AUTH_RESPONSE_INCLUDE_API_KEY:-false}
       AUTH_RESPONSE_INCLUDE_USER: ${AUTH_RESPONSE_INCLUDE_USER:-false}
       APP_ENV: "${APP_ENV:?Set APP_ENV}"
-      # Transactional email (must be listed here or docker/.env values never reach the API process)
+      # Transactional email (must be listed here or root .env values never reach the API process)
       EMAIL_ENABLED: ${EMAIL_ENABLED:-true}
       EMAIL_PROVIDER: ${EMAIL_PROVIDER:-log}
       EMAIL_FROM: ${EMAIL_FROM:-noreply@localhost}
@@ -82,7 +82,7 @@ services:
       ORG_INVITATION_TTL_HOURS: ${ORG_INVITATION_TTL_HOURS:-168}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       EMAIL_REDIRECT_ALL_TO: ${EMAIL_REDIRECT_ALL_TO:-}
-      # Optional API configuration (set in docker/.env — see docker/.env.example)
+      # Optional API configuration (set in repository root .env — see ../../.env.example)
       LOG_LEVEL: ${LOG_LEVEL:-}
       HTTP_READ_HEADER_TIMEOUT_SEC: ${HTTP_READ_HEADER_TIMEOUT_SEC:-}
       HTTP_READ_TIMEOUT_SEC: ${HTTP_READ_TIMEOUT_SEC:-}

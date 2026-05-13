@@ -4,7 +4,7 @@ End-to-end check against a running Docker API stack:
   signup → resend verification → TOTP enroll → MFA login → create org → invite user B → B registers → B accepts invite.
 
 Requires:
-  - Stack up: docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml [--env-file docker/.env] up -d --build
+  - Stack up: docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml [--env-file ../../.env] up -d --build
   - MFA_ENCRYPTION_KEY set on chexi-api (docker-compose.dev.yml supplies a dev default)
   - Redis worker processes invitation emails
   - EMAIL_PROVIDER=log: invitation token appears in `docker logs <chexi-api-container>`; EMAIL_PROVIDER=resend: deliveries also appear in the Resend dashboard.

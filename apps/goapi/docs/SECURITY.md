@@ -71,7 +71,7 @@ Optional first admin when no JWT exists yet. Variables: `BOOTSTRAP_ADMIN_ENABLED
 
 ## MFA and webhook encryption keys
 
-Both use the **same encoding rules** (see [`.env.example`](../.env.example)):
+Both use the **same encoding rules** (see [repository `.env.example`](../../../.env.example)):
 
 - **32 bytes** of key material encoded as **Base64** or **64 hex characters**.
 - If unset: features that need encryption may be unavailable or degraded.
@@ -124,7 +124,7 @@ The webhook HTTP client **rejects redirects** (`CheckRedirect`), so a “safe”
 
 | Stack | Files | When to use |
 |-------|--------|-------------|
-| **Hardened baseline** | `docker/docker-compose.yml` only (`make docker-up-baseline`) | Production‑like or minimal exposure: requires explicit `docker/.env` (**`APP_ENV`**, **`DB_SSLMODE`**, strong secrets). No published DB/Redis ports, no admin UIs by default. |
+| **Hardened baseline** | `docker/docker-compose.yml` only (`make docker-up-baseline`) | Production‑like or minimal exposure: requires explicit **repository root** `.env` (**`APP_ENV`**, **`DB_SSLMODE`**, strong secrets). No published DB/Redis ports, no admin UIs by default. |
 | **Baseline + dev overlay** | `docker-compose.yml` + `docker-compose.dev.yml` (`make docker-up`) | **Local workstations** only: loopback ports, optional pgAdmin/Redis Commander, documented dev defaults. |
 
 Image pins and upgrade workflow: [DOCKER.md](DOCKER.md).

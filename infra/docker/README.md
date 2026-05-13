@@ -9,7 +9,11 @@ make docker-up
 make docker-down
 ```
 
-For custom local values, copy `.env.example` to `.env` at the repository root.
+For custom local values, copy `.env.example` to `.env` at the repository root. That file is shared with the Go API and the admin Vite app; do not keep separate `.env` copies under `apps/`.
+
+## Traefik (optional)
+
+To put the API behind a local reverse proxy (host **`api.localhost`**, default **`http://api.localhost:9080`**), use the third Compose file or `make docker-up-traefik`. See `infra/traefik/README.md`.
 
 ## Database passwords
 

@@ -10,12 +10,16 @@
     "dev": "make dev",
     "test": "make test",
     "ci": "make ci",
-    "web:dev": "if [ -f apps/web/package.json ]; then pnpm --filter @chexi/web dev; else echo 'apps/web is not scaffolded yet.'; fi",
-    "web:build": "if [ -f apps/web/package.json ]; then pnpm --filter @chexi/web build; else echo 'apps/web is not scaffolded yet.'; fi",
-    "web:lint": "if [ -f apps/web/package.json ]; then pnpm --filter @chexi/web lint; else echo 'apps/web is not scaffolded yet.'; fi"
+    "admin:dev": "pnpm --filter chexi-trading-admin dev",
+    "admin:build": "pnpm --filter chexi-trading-admin build",
+    "admin:lint": "pnpm --filter chexi-trading-admin lint",
+    "admin:test": "pnpm --filter chexi-trading-admin test",
+    "web:dev": "pnpm run admin:dev",
+    "web:build": "pnpm run admin:build",
+    "web:lint": "pnpm run admin:lint"
   },
   "packageManager": "pnpm@10.12.1",
   "engines": {
-    "node": ">=20"
+    "node": ">=24.0.0"
   }
 }

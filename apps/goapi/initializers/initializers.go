@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
@@ -11,6 +13,7 @@ import (
 	"goapi/config"
 	"goapi/internal/bootstrapadmin"
 	"goapi/internal/email"
+	"goapi/internal/envroot"
 	"goapi/internal/events"
 	"goapi/internal/queue"
 	queuejobs "goapi/internal/queue/jobs"
@@ -199,9 +202,31 @@ func CloseRedis(redisClient *redis.Client) {
 	}
 }
 
-// loadEnv reads .env file into environment, if present
+// loadEnv reads a single .env into the process environment.
+// Priority: CHEXI_ENV_FILE → monorepo root .env (pnpm-workspace.yaml + apps/goapi) → cwd .env
 func loadEnv() {
+	if p := strings.TrimSpace(os.Getenv("CHEXI_ENV_FILE")); p != "" {
+		if err := godotenv.Load(p); err != nil {
+			logger.Log.Info().Str("path", p).Msg("CHEXI_ENV_FILE set but file not loaded; relying on environment variables")
+		} else {
+			logger.Log.Info().Str("path", p).Msg("Loaded environment from CHEXI_ENV_FILE")
+		}
+		return
+	}
+	wd, err := os.Getwd()
+	if err != nil {
+		wd = "."
+	}
+	if root, rerr := envroot.MonorepoRootFrom(wd); rerr == nil && root != "" {
+		envPath := filepath.Join(root, ".env")
+		if err := godotenv.Load(envPath); err != nil {
+			logger.Log.Info().Str("path", envPath).Msg("No .env at monorepo root; relying on environment variables")
+		} else {
+			logger.Log.Info().Str("path", envPath).Msg("Loaded environment from monorepo root")
+		}
+		return
+	}
 	if err := godotenv.Load(); err != nil {
-		logger.Log.Info().Msg("No .env file found; relying on environment variables")
+		logger.Log.Info().Msg("No .env in working directory; relying on environment variables")
 	}
 }

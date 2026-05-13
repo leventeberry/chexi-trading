@@ -4,6 +4,9 @@
   "version": "2.2.1",
   "description": "chexi-trading admin dashboard (Vite + React + shadcn/ui)",
   "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

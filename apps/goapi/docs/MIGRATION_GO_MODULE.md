@@ -41,4 +41,4 @@ The API module is currently **`module goapi`** ([`go.mod`](../go.mod)) with impo
 
 ## Do not rename blindly
 
-- `goapi` also appears as the **compiled binary filename** and in **Postgres/dev defaults** in nested `docker/.env.example`; those are **not** the Go module and can stay for backward compatibility until you intentionally rebrand volumes and local DB names.
+- `goapi` also appears as the **compiled binary filename** and in **Postgres/dev defaults** in the repository root `.env.example`; those are **not** the Go module and can stay for backward compatibility until you intentionally rebrand volumes and local DB names.

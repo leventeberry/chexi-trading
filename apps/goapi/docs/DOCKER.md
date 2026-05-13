@@ -5,19 +5,19 @@
 | Stack | Files | Purpose |
 |-------|--------|---------|
 | **Local development** | `docker-compose.yml` + `docker-compose.dev.yml` | Published DB/Redis on loopback, optional Redis Commander / pgAdmin, **dev defaults** for `APP_ENV`, `DB_SSLMODE`, and credentials (`make docker-up`, `make docker-all`). |
-| **Hardened baseline only** | `docker-compose.yml` | No admin UIs, DB/Redis not published by default. **`APP_ENV` and `DB_SSLMODE` must be set** (no insecure compose defaults). Use `make docker-up-baseline` with `docker/.env`. |
+| **Hardened baseline only** | `docker-compose.yml` | No admin UIs, DB/Redis not published by default. **`APP_ENV` and `DB_SSLMODE` must be set** (no insecure compose defaults). Use `make docker-up-baseline` with the **repository root** `.env`. |
 
 The dev overlay overrides `APP_ENV` / `DB_SSLMODE` with `${VAR:-…}` so local workflows work without listing every variable. The baseline uses `"${APP_ENV:?…}"` / `"${DB_SSLMODE:?…}"` so **baseline-only** deploys fail fast if those are missing from the environment.
 
 ## Required variables (baseline-only / production-like)
 
-With **only** `docker/docker-compose.yml`, set at least in `docker/.env` (or the shell):
+With **only** `docker/docker-compose.yml`, set at least in the **repository root** `.env` (or the shell):
 
 - **`APP_ENV`** — e.g. `staging` or `production` (not defaulted by the baseline).
 - **`DB_SSLMODE`** — e.g. `require`, `verify-ca`, or `verify-full` for TLS to Postgres; avoid `disable` outside local/dev.
-- **`POSTGRES_*`**, **`DB_*`**, **`JWT_SECRET`** — non-empty secrets (see [`docker/.env.example`](../docker/.env.example)).
+- **`POSTGRES_*`**, **`DB_*`**, **`JWT_SECRET`** — non-empty secrets (see [repository `.env.example`](../../../.env.example)).
 
-With **baseline + dev overlay**, you still override passwords/JWT in `docker/.env` on shared machines; `APP_ENV` defaults to `development` and `DB_SSLMODE` to `disable` via the overlay.
+With **baseline + dev overlay**, you still override passwords/JWT in the **repository root** `.env` on shared machines; `APP_ENV` defaults to `development` and `DB_SSLMODE` to `disable` via the overlay.
 
 ## Pinned images
 

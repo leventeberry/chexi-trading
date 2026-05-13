@@ -55,8 +55,10 @@ function MissingClerkPubKey() {
             <AlertTitle>No Publishable Key Found!</AlertTitle>
             <AlertDescription>
               <p className='text-balance'>
-                You need to generate a publishable key from Clerk and put it
-                inside the <code className={codeBlock}>.env</code> file.
+                You need to generate a publishable key from Clerk and set
+                <code className={codeBlock}>VITE_CLERK_PUBLISHABLE_KEY</code> in
+                the monorepo root <code className={codeBlock}>.env</code> (same file
+                as the API and Docker — copy from <code className={codeBlock}>.env.example</code> at the repository root).
               </p>
             </AlertDescription>
           </Alert>
@@ -83,12 +85,14 @@ function MissingClerkPubKey() {
                 Publishable Key.
               </li>
               <li>
-                Rename <code className={codeBlock}>.env.example</code> to{' '}
-                <code className={codeBlock}>.env</code>
+                At the <strong>repository root</strong>, copy{' '}
+                <code className={codeBlock}>.env.example</code> to{' '}
+                <code className={codeBlock}>.env</code> if you have not already.
               </li>
               <li>
-                Paste your key into your <code className={codeBlock}>.env</code>{' '}
-                file.
+                Add or edit{' '}
+                <code className={codeBlock}>VITE_CLERK_PUBLISHABLE_KEY</code> in
+                that root <code className={codeBlock}>.env</code> file.
               </li>
             </ol>
             <p>The final result should resemble the following:</p>

@@ -77,7 +77,7 @@ d=json.load(open(sys.argv[1]))
 t=d.get('token') or {}
 sys.exit(0 if t.get('jwt_token') and t.get('refresh_token') else 1)
 " "${CJ_OUT}" 2>/dev/null; then
-  echo "e2e_docker: register returned no tokens. Set EMAIL_ENABLED=false in docker/.env (or export EMAIL_ENABLED=false when running make docker-up / docker-all) so signup returns tokens without email verification." >&2
+  echo "e2e_docker: register returned no tokens. Set EMAIL_ENABLED=false in the repository root .env (or export EMAIL_ENABLED=false when running make docker-up / docker-all) so signup returns tokens without email verification." >&2
   cat "${CJ_OUT}" >&2
   rm -f "${CJ_OUT}"
   exit 1

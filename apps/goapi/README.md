@@ -122,9 +122,9 @@ goapi/
 
 3. **Set up environment variables**
    
-   For **local `make run`**, create a `.env` in the repo root (copy from **[`.env.example`](.env.example)**). For **Docker**, copy **[`docker/.env.example`](docker/.env.example)** → `docker/.env` (see [Docker Setup](#docker-setup)).
+   Use a **single `.env` at the monorepo (repository) root**: copy **[`.env.example`](../../.env.example)** → **`.env`** there. The Go API loads it automatically when you run from `apps/goapi`; Docker Compose uses the same file via the root `Makefile` (see [Docker Setup](#docker-setup)).
    
-   Minimal local example (same variables appear with comments in `.env.example`):
+   Minimal local example (the template has full comments):
    ```env
    # Database Configuration
    DB_USER=your_db_user
@@ -213,13 +213,13 @@ goapi/
 
 4. **Set up the database**
    
-   The application will automatically create the necessary tables using GORM AutoMigrate. Ensure your PostgreSQL database exists and is accessible with the credentials provided in `.env`.
+   The application will automatically create the necessary tables using GORM AutoMigrate. Ensure your PostgreSQL database exists and is accessible with the credentials in the **repository root** `.env`.
 
 5. **Set up Redis (optional)**
    
    If you want to use Redis for caching and distributed rate limiting:
    - Install Redis locally or use Docker (pin matches compose baseline): `docker run -d -p 6379:6379 redis:7.4.9-alpine3.21`
-   - Set `REDIS_ENABLED=true` in your `.env` file
+   - Set `REDIS_ENABLED=true` in the **repository root** `.env` file
    - Configure `REDIS_HOST` and `REDIS_PORT` if different from defaults
    - For staging/production with a non-local Redis host, set `REDIS_TLS_ENABLED=true` (and optionally `REDIS_TLS_SERVER_NAME` / `REDIS_TLS_CA_CERT`)
    - `REDIS_TLS_INSECURE_SKIP_VERIFY=true` is rejected in staging/production
@@ -294,7 +294,7 @@ make docker-logs-api
 - `make security-scan` - Run `secret-scan` then `container-scan` (supply-chain gates only; does not replace `make ci`)
 - `make test-integration` - Run local integration tests (auto-starts Docker Postgres/Redis, resets `goapi_integration`, applies SQL migrations, then runs `go test -tags=integration -race -v ./test/integration/...`)
 - `make test-e2e-docker` - HTTP end-to-end checks against the **already running** dev Docker API (`curl` + `python3`; see [docs/TESTING.md](docs/TESTING.md#docker-e2e-http))
-- `make docker-e2e` - `make docker-all` then `make test-e2e-docker` (for signup tokens, set `EMAIL_ENABLED=false` in `docker/.env`)
+- `make docker-e2e` - `make docker-all` then `make test-e2e-docker` (for signup tokens, set `EMAIL_ENABLED=false` in the repository root `.env`)
 - `make test-coverage` - Run tests with coverage report
 - `make clean` - Clean build artifacts (binary, coverage files)
 
@@ -337,12 +337,12 @@ make docker-logs-api
 
 ### Baseline vs local dev overlay
 
-- **`docker/docker-compose.yml` (baseline)** — Hardened defaults: **no** weak credential fallbacks, **no** published Postgres/Redis ports, **no** admin web UIs. Requires explicit `POSTGRES_*`, `DB_*`, `JWT_SECRET`, **`APP_ENV`**, and **`DB_SSLMODE`** (e.g. via `--env-file docker/.env`). The baseline does **not** default `APP_ENV` to `development` or `DB_SSLMODE` to `disable` (avoids accidental insecure deploys). API binds to **127.0.0.1** by default (`API_PUBLISH_HOST` / `API_PUBLISH_PORT`). Adds container hardening (`no-new-privileges`, `cap_drop: ALL`, read-only API root + `/tmp` tmpfs). Images use **pinned tags** (Postgres, Redis; see [docs/DOCKER.md](docs/DOCKER.md)).
+- **`docker/docker-compose.yml` (baseline)** — Hardened defaults: **no** weak credential fallbacks, **no** published Postgres/Redis ports, **no** admin web UIs. Requires explicit `POSTGRES_*`, `DB_*`, `JWT_SECRET`, **`APP_ENV`**, and **`DB_SSLMODE`** (e.g. via `--env-file ../../.env` from `apps/goapi`, or use the monorepo root `Makefile`). The baseline does **not** default `APP_ENV` to `development` or `DB_SSLMODE` to `disable` (avoids accidental insecure deploys). API binds to **127.0.0.1** by default (`API_PUBLISH_HOST` / `API_PUBLISH_PORT`). Adds container hardening (`no-new-privileges`, `cap_drop: ALL`, read-only API root + `/tmp` tmpfs). Images use **pinned tags** (Postgres, Redis; see [docs/DOCKER.md](docs/DOCKER.md)).
 - **`docker/docker-compose.dev.yml` (overlay)** — Local ergonomics: publishes **127.0.0.1** ports for Postgres/Redis, optional **Redis Commander** and **pgAdmin**, and convenience defaults (`chexi_dev` / documented passwords) **only when this file is combined with the baseline**. The overlay restores **`APP_ENV=${APP_ENV:-development}`** and **`DB_SSLMODE=${DB_SSLMODE:-disable}`** for local use.
 
-**Local development (recommended):** `make docker-up` uses **both** compose files. Optionally copy `docker/.env.example` → `docker/.env` to override passwords, JWT, and ports.
+**Local development (recommended):** `make docker-up` uses **both** compose files. Optionally create the **repository root** `.env` from **[`.env.example`](../../.env.example)** to override passwords, JWT, and ports.
 
-**Production-like / minimal exposure:** `make docker-up-baseline` uses **only** the baseline file and requires a populated `docker/.env` with **`APP_ENV`**, **`DB_SSLMODE`**, and other required variables (no dev defaults). See [docs/DOCKER.md](docs/DOCKER.md).
+**Production-like / minimal exposure:** `make docker-up-baseline` uses **only** the baseline file and requires a populated **repository root** `.env` with **`APP_ENV`**, **`DB_SSLMODE`**, and other required variables (no dev defaults). See [docs/DOCKER.md](docs/DOCKER.md).
 
 ### Quick Start with Docker Compose
 
@@ -354,13 +354,13 @@ make docker-logs-api
    cd goapi
    ```
 
-2. **Optional: configure `docker/.env`**
+2. **Optional: configure the repository root `.env`**
    
-   For custom secrets or ports, copy the example file:
+   From the monorepo root:
    ```bash
-   cp docker/.env.example docker/.env
+   cp .env.example .env
    ```
-   If you omit `docker/.env`, the dev overlay still supplies **local-only** defaults (change them for shared machines).
+   If you omit `.env`, the dev overlay still supplies **local-only** defaults (change them for shared machines).
 
 3. **Build and start services** (baseline + dev overlay)
    ```bash
@@ -380,13 +380,13 @@ make docker-logs-api
 5. **Access the API and tools**
    - API: `http://127.0.0.1:8080` (or `localhost`)
    - Swagger UI: `http://127.0.0.1:8080/swagger/index.html`
-   - PostgreSQL (host): `127.0.0.1:5432` — user/password/db match `POSTGRES_*` in `docker/.env` or dev defaults (`goapi_dev` / see `docker/.env.example`)
-   - **Redis Commander**: `http://127.0.0.1:8081` — credentials from `REDIS_COMMANDER_HTTP_*` in `docker/.env`
+   - PostgreSQL (host): `127.0.0.1:5432` — user/password/db match `POSTGRES_*` in the repository root `.env` or dev defaults (`chexi_dev` / see root `.env.example`)
+   - **Redis Commander**: `http://127.0.0.1:8081` — credentials from `REDIS_COMMANDER_HTTP_*` in the repository root `.env`
    - **pgAdmin**: `http://127.0.0.1:5050` — `PGADMIN_DEFAULT_EMAIL` / `PGADMIN_DEFAULT_PASSWORD`
 
    **Security:** Dev-overlay defaults are for **local workstations** only. Use `make docker-up-baseline` and strong secrets for tighter deployments.
 
-   **Optional — HTTP E2E:** Set `EMAIL_ENABLED=false` in `docker/.env` so `POST /api/v1/register` returns tokens without email verification. Requires **`curl`** and **`python3`**. Then run `make docker-e2e` (rebuild + up + E2E) or bring the stack up and run `make test-e2e-docker`. Details: [docs/TESTING.md — Docker E2E (HTTP)](docs/TESTING.md#docker-e2e-http).
+   **Optional — HTTP E2E:** Set `EMAIL_ENABLED=false` in the repository root `.env` so `POST /api/v1/register` returns tokens without email verification. Requires **`curl`** and **`python3`**. Then run `make docker-e2e` (rebuild + up + E2E) or bring the stack up and run `make test-e2e-docker`. Details: [docs/TESTING.md — Docker E2E (HTTP)](docs/TESTING.md#docker-e2e-http).
 
 6. **Stop services**
    ```bash
@@ -409,22 +409,22 @@ make docker-up
 
 #### Using Docker Compose Directly
 
-Run from the repository root so paths resolve correctly.
+Run from **`apps/goapi`** so `-f docker/...` paths resolve. Use **`--env-file ../../.env`** to load variables from the monorepo root (same file as `make docker-up` when invoked from the monorepo).
 
-**Local stack (ports + admin UIs):**
+**Local stack (ports + admin UIs):** pass the monorepo root env file when not relying on exported variables:
 ```bash
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up -d
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml logs -f chexi-api
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml down
-docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml down -v
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml --env-file ../../.env up -d
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml --env-file ../../.env logs -f chexi-api
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml --env-file ../../.env down
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml --env-file ../../.env down -v
 ```
 
-**Hardened baseline only** (set `POSTGRES_*`, `DB_*`, `JWT_SECRET`, **`APP_ENV`**, **`DB_SSLMODE`** in `docker/.env` first):
+**Hardened baseline only** (set `POSTGRES_*`, `DB_*`, `JWT_SECRET`, **`APP_ENV`**, **`DB_SSLMODE`** in the repository root `.env` first):
 ```bash
-docker compose -f docker/docker-compose.yml --env-file docker/.env up -d
+docker compose -f docker/docker-compose.yml --env-file ../../.env up -d
 ```
 
-Optional overrides: `docker compose ... --env-file docker/.env ...`
+Optional overrides: `docker compose ... --env-file ../../.env ...`
 
 ### Docker Compose Services
 
@@ -439,7 +439,7 @@ Optional overrides: `docker compose ... --env-file docker/.env ...`
 
 ### Local database credentials (dev overlay)
 
-With the dev overlay, Postgres defaults to user **`goapi_dev`**, database **`goapi`**, and the password in `docker/.env.example` / overlay default — **override in `docker/.env`**. The API container’s `DB_USER` / `DB_PASS` / `DB_NAME` must match the Postgres service.
+With the dev overlay, Postgres defaults to user **`chexi_dev`**, database **`chexi`**, and the password in the root **`.env.example`** / overlay default — **override in the repository root `.env`**. The API container’s `DB_USER` / `DB_PASS` / `DB_NAME` must match the Postgres service.
 
 ### Docker Image Details
 
@@ -794,7 +794,7 @@ The application supports optional Redis caching for improved performance:
 - **Email Changes**: Old email cache key is deleted when email is updated
 
 ### Enabling Redis
-Set `REDIS_ENABLED=true` in your `.env` file. The application will automatically:
+Set `REDIS_ENABLED=true` in the **repository root** `.env`. The application will automatically:
 - Connect to Redis on startup
 - Use Redis for caching and rate limiting
 - Fall back to in-memory if Redis connection fails

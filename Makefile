@@ -8,6 +8,7 @@ DOCKER_COMPOSE_DEV := infra/docker/docker-compose.dev.yml
 DOCKER_COMPOSE := docker compose -f $(DOCKER_COMPOSE_BASE) -f $(DOCKER_COMPOSE_DEV)
 DOCKER_COMPOSE_STRICT := docker compose -f $(DOCKER_COMPOSE_BASE)
 DOCKER_COMPOSE_LEGACY := COMPOSE_PROJECT_NAME=docker docker compose -f $(DOCKER_COMPOSE_BASE) -f $(DOCKER_COMPOSE_DEV)
+DOCKER_COMPOSE_TRAEFIK := docker compose -f $(DOCKER_COMPOSE_BASE) -f $(DOCKER_COMPOSE_DEV) -f infra/docker/docker-compose.traefik.yml
 DOCKER_ENV_FILE := $(if $(wildcard $(ROOT_ENV_FILE)),$(ROOT_ENV_FILE),)
 DOCKER_ENV_FLAG := $(if $(DOCKER_ENV_FILE),--env-file $(DOCKER_ENV_FILE),)
 
@@ -16,7 +17,7 @@ DOCKER_ENV_FLAG := $(if $(DOCKER_ENV_FILE),--env-file $(DOCKER_ENV_FILE),)
 	test-integration test-e2e-docker docker-e2e test-coverage clean swagger swag \
 	docker-build docker-up docker-up-baseline docker-down docker-down-baseline \
 	docker-down-volumes docker-logs docker-logs-api docker-logs-db docker-logs-redis \
-	docker-restart docker-rebuild docker-ps docker-shell-api docker-shell-db \
+	docker-up-traefik docker-restart docker-rebuild docker-ps docker-shell-api docker-shell-db \
 	docker-shell-redis docker-logs-redis-commander docker-logs-pgadmin \
 	docker-open-redis-commander docker-open-pgadmin db-migrate migrate-sql-up \
 	migrate-sql-down db-seed dev-docker setup prod-build all docker-all
@@ -28,8 +29,9 @@ help: ## Show monorepo commands
 	@echo "  make dev              Start full Docker Compose stack (API runs in the chexi-api container)"
 	@echo "  make dev-local-api    Start Compose, stop container api, run Go API on host (uses root .env PORT)"
 	@echo "  make api-dev          Run the Go API on host only (expects DB/Redis reachable; often after docker-up)"
-	@echo "  make web-dev          Run the web app if apps/web exists"
+	@echo "  make web-dev          Run the admin UI (apps/shadcn-admin, Vite)"
 	@echo "  make docker-up        Start Docker Compose from the repo root"
+	@echo "  make docker-up-traefik  Same as docker-up plus Traefik (api.localhost → API)"
 	@echo "  make test             Run aggregate tests"
 	@echo "  make ci               Run aggregate CI gates"
 	@echo ""
@@ -58,10 +60,10 @@ dev-local-api: docker-up ## Compose deps + API on host (stops the api service to
 	@$(MAKE) api-dev
 
 web-dev:
-	@if [ -f "apps/web/package.json" ]; then \
-		pnpm --filter @chexi/web dev; \
+	@if [ -f "apps/shadcn-admin/package.json" ]; then \
+		pnpm --filter chexi-trading-admin dev; \
 	else \
-		echo "apps/web is not scaffolded yet. Scaffold the Next.js app before running make web-dev."; \
+		echo "apps/shadcn-admin is missing; add the admin app before running make web-dev."; \
 	fi
 
 install deps test-race fmt-check vulncheck gosec-scan security-check secret-scan \
@@ -74,11 +76,11 @@ build:
 
 test:
 	@$(MAKE) -C $(API_DIR) test
-	@if [ -f "apps/web/package.json" ]; then pnpm --filter @chexi/web test; fi
+	@if [ -f "apps/shadcn-admin/package.json" ]; then pnpm --filter chexi-trading-admin test; fi
 
 ci:
 	@$(MAKE) -C $(API_DIR) ci
-	@if [ -f "apps/web/package.json" ]; then pnpm --filter @chexi/web lint && pnpm --filter @chexi/web build; fi
+	@if [ -f "apps/shadcn-admin/package.json" ]; then pnpm --filter chexi-trading-admin lint && pnpm --filter chexi-trading-admin build; fi
 
 test-integration:
 	@$(MAKE) -C $(API_DIR) test-integration
@@ -92,6 +94,9 @@ docker-build:
 
 docker-up:
 	$(DOCKER_COMPOSE) $(DOCKER_ENV_FLAG) up -d
+
+docker-up-traefik:
+	$(DOCKER_COMPOSE_TRAEFIK) $(DOCKER_ENV_FLAG) up -d
 
 docker-up-baseline:
 	@test -n "$(DOCKER_ENV_FILE)" || (echo "Create .env from .env.example before running the hardened baseline stack" && exit 1)

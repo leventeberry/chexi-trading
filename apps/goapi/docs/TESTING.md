@@ -8,7 +8,7 @@ Authentication and user CRUD endpoints are under **`/api/v1`**. `GET /` returns 
 
 Before testing, ensure:
 1. Database is running (PostgreSQL)
-2. `.env` file is configured with database credentials
+2. **Repository root** `.env` is configured with database credentials
 3. Server is running: `make run` or `go run main.go`
 
 **First admin:** Self-service registration cannot create admins. For an empty database, optional startup bootstrap uses `BOOTSTRAP_ADMIN_ENABLED`, `BOOTSTRAP_ADMIN_EMAIL`, and `BOOTSTRAP_ADMIN_PASSWORD` (see README **First admin (bootstrap)**). Remove those variables after the first admin exists.
@@ -345,7 +345,7 @@ Black-box checks against the **real API URL** published by the dev Docker stack 
 **Prerequisites**
 
 1. **`curl`** and **`python3`** on the PATH.
-2. **`EMAIL_ENABLED=false`** in `docker/.env` (or equivalent) so registration returns `token.jwt_token` / `token.refresh_token` immediately. With `EMAIL_ENABLED=true`, the API returns a verification message instead of tokens; the script exits with a hint.
+2. **`EMAIL_ENABLED=false`** in the **repository root** `.env` (or equivalent) so registration returns `token.jwt_token` / `token.refresh_token` immediately. With `EMAIL_ENABLED=true`, the API returns a verification message instead of tokens; the script exits with a hint.
 3. Optional: **`E2E_BASE_URL`** if the API is not at `http://127.0.0.1:8080` (must match `API_PUBLISH_HOST` / `API_PUBLISH_PORT` in Compose).
 
 **Covered flow (happy paths + one auth denial):** `GET /health` (healthy) → register → login → refresh → `GET /api/v1/users/me` → create organization → create org API key (validates `key_prefix`, does not print secret) → list org API keys → `GET /api/v1/users/me` without `Authorization` (expect 401).
@@ -401,7 +401,7 @@ Total: 18
 ## Troubleshooting
 
 ### Server won't start
-- Check database connection in `.env`
+- Check database connection variables in the **repository root** `.env`
 - Ensure PostgreSQL is running
 - Check port 8080 is not in use
 
@@ -443,7 +443,7 @@ wrk -t4 -c100 -d30s http://localhost:8080/
 For full integration testing with a test database:
 
 1. Create a separate test database
-2. Update `.env.test` with test database credentials
+2. Update the **repository root** `.env.test` (or export variables) with test database credentials
 3. Run migrations on test database
 4. Execute test suite
 5. Clean up test data

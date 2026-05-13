@@ -2,6 +2,11 @@
 
 # Variables
 APP_NAME=goapi
+# Monorepo: Docker Compose reads the repository-root `.env` (../../.env) when present.
+REPO_ROOT := $(abspath $(CURDIR)/../..)
+MONOREPO_MARKER := $(REPO_ROOT)/pnpm-workspace.yaml
+DOCKER_ENV_FILE := $(shell if [ -f "$(MONOREPO_MARKER)" ] && [ -f "$(REPO_ROOT)/.env" ]; then printf '%s' "$(REPO_ROOT)/.env"; elif [ -f "$(CURDIR)/docker/.env" ]; then printf '%s' "$(CURDIR)/docker/.env"; else printf ''; fi)
+DOCKER_ENV_FLAG := $(if $(DOCKER_ENV_FILE),--env-file $(DOCKER_ENV_FILE),)
 # Pin versions to match .github/workflows/ci.yml (bump together).
 GOVULNCHECK_VERSION?=v1.1.4
 GOSEC_VERSION?=v2.22.0
@@ -14,11 +19,8 @@ DOCKER_COMPOSE_BASE=docker/docker-compose.yml
 DOCKER_COMPOSE_DEV=docker/docker-compose.dev.yml
 # Local/dev stack: baseline + dev overlay (host ports, admin UIs, convenience defaults)
 DOCKER_COMPOSE=docker compose -f $(DOCKER_COMPOSE_BASE) -f $(DOCKER_COMPOSE_DEV)
-# Optional overrides (copy docker/.env.example -> docker/.env)
-DOCKER_ENV_FLAG:=$(shell test -f docker/.env && echo --env-file docker/.env)
 # Hardened baseline only (no published DB/Redis ports; set POSTGRES_* / DB_* / JWT_SECRET explicitly)
 DOCKER_COMPOSE_STRICT=docker compose -f $(DOCKER_COMPOSE_BASE)
-# Run these targets from repo root. Optional: docker compose --env-file docker/.env ...
 GO=go
 SWAG=swag
 
@@ -130,7 +132,7 @@ test-e2e-docker: ## HTTP E2E against running Docker API (needs curl + python3; s
 	@echo "$(GREEN)Running Docker HTTP E2E (stack must already be up)...$(NC)"
 	bash ./scripts/e2e_docker.sh
 
-docker-e2e: ## Rebuild/start dev stack then run HTTP E2E (set EMAIL_ENABLED=false in docker/.env for token signup)
+docker-e2e: ## Rebuild/start dev stack then run HTTP E2E (set EMAIL_ENABLED=false in root .env for token signup)
 	@$(MAKE) docker-all
 	@$(MAKE) test-e2e-docker
 
@@ -172,10 +174,18 @@ docker-up: ## Start Docker stack (baseline + dev overlay: DB/Redis on localhost,
 	@echo "$(GREEN)API: http://localhost:8080$(NC)"
 	@echo "$(GREEN)Swagger: http://localhost:8080/swagger/index.html$(NC)"
 
-docker-up-baseline: ## Hardened baseline only (no dev overlay); requires full env — see docker/.env.example
+docker-up-baseline: ## Hardened baseline only (no dev overlay); requires full env — see repository root .env.example
 	@echo "$(GREEN)Starting hardened baseline stack...$(NC)"
-	@test -f docker/.env || (echo "$(YELLOW)Create docker/.env from docker/.env.example with POSTGRES_* , DB_* , JWT_SECRET , APP_ENV , DB_SSLMODE$(NC)" && exit 1)
-	$(DOCKER_COMPOSE_STRICT) --env-file docker/.env up -d
+	@set -e; \
+	if [ -f "$(MONOREPO_MARKER)" ]; then \
+	  ENV_FILE="$(REPO_ROOT)/.env"; \
+	  MSG="Create $$ENV_FILE from repository .env.example (POSTGRES_* , DB_* , JWT_SECRET , APP_ENV , DB_SSLMODE)"; \
+	else \
+	  ENV_FILE="$(CURDIR)/docker/.env"; \
+	  MSG="Create docker/.env with required secrets, or use the monorepo root .env"; \
+	fi; \
+	test -f "$$ENV_FILE" || (echo "$(YELLOW)$$MSG$(NC)" && exit 1); \
+	$(DOCKER_COMPOSE_STRICT) --env-file "$$ENV_FILE" up -d
 	@echo "$(GREEN)Baseline containers started (DB/Redis not published to host by default)$(NC)"
 
 docker-down: ## Stop Docker containers (dev stack)
@@ -189,7 +199,9 @@ docker-down-volumes: ## Stop Docker containers and remove volumes
 	@echo "$(GREEN)Containers stopped and volumes removed$(NC)"
 
 docker-down-baseline: ## Stop hardened baseline stack (same env file as docker-up-baseline)
-	$(DOCKER_COMPOSE_STRICT) --env-file docker/.env down
+	@set -e; \
+	if [ -f "$(MONOREPO_MARKER)" ]; then ENV_FILE="$(REPO_ROOT)/.env"; else ENV_FILE="$(CURDIR)/docker/.env"; fi; \
+	$(DOCKER_COMPOSE_STRICT) --env-file "$$ENV_FILE" down
 
 docker-logs: ## View Docker container logs
 	@echo "$(GREEN)Viewing Docker logs...$(NC)"
@@ -243,12 +255,12 @@ docker-logs-pgadmin: ## View pgAdmin logs
 
 docker-open-redis-commander: ## Open Redis Commander in browser
 	@echo "$(GREEN)Opening Redis Commander at http://localhost:8081$(NC)"
-	@echo "$(YELLOW)Credentials: REDIS_COMMANDER_HTTP_USER / REDIS_COMMANDER_HTTP_PASSWORD in docker/.env$(NC)"
+	@echo "$(YELLOW)Credentials: REDIS_COMMANDER_HTTP_USER / REDIS_COMMANDER_HTTP_PASSWORD in repository root .env$(NC)"
 	@$(if $(shell which start 2>/dev/null),start http://localhost:8081,echo "Please open http://localhost:8081 in your browser")
 
 docker-open-pgadmin: ## Open pgAdmin in browser
 	@echo "$(GREEN)Opening pgAdmin at http://localhost:5050$(NC)"
-	@echo "$(YELLOW)Credentials: PGADMIN_DEFAULT_EMAIL / PGADMIN_DEFAULT_PASSWORD in docker/.env$(NC)"
+	@echo "$(YELLOW)Credentials: PGADMIN_DEFAULT_EMAIL / PGADMIN_DEFAULT_PASSWORD in repository root .env$(NC)"
 	@$(if $(shell which start 2>/dev/null),start http://localhost:5050,echo "Please open http://localhost:5050 in your browser")
 
 # Database Commands

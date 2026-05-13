@@ -7,7 +7,11 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import { playwright } from '@vitest/browser-playwright'
 
 // https://vite.dev/config/
+// Load VITE_* from the monorepo root `.env` only (single source of truth with Go API / Docker).
+const monorepoRoot = path.resolve(__dirname, '../..')
+
 export default defineConfig({
+  envDir: monorepoRoot,
   plugins: [
     tanstackRouter({
       target: 'react',

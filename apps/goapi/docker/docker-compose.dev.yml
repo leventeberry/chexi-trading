@@ -1,7 +1,7 @@
 # Local development overlay: publishes DB/Redis (and admin tools) on loopback only,
 # supplies non-production convenience defaults. Not for untrusted networks.
 #
-#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml --env-file docker/.env up -d
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml --env-file ../../.env up -d
 #
 # Defaults below are for local workstations only — change POSTGRES_PASSWORD / JWT_SECRET / UI passwords for shared machines.
 
