@@ -30,6 +30,13 @@ type OrganizationRepository interface {
 	CountMembersWithRole(orgID uuid.UUID, role string) (int64, error)
 }
 
+// TradePlanRepository persists user-scoped advisory manual trade plans.
+type TradePlanRepository interface {
+	Create(row *models.TradePlan) error
+	ListByUser(userID uuid.UUID) ([]models.TradePlan, error)
+	FindByUserAndID(userID, id uuid.UUID) (*models.TradePlan, error)
+}
+
 // OrganizationNoteRepository persists notes scoped to an organization (tenant sub-resource).
 type OrganizationNoteRepository interface {
 	Create(note *models.OrganizationNote) error

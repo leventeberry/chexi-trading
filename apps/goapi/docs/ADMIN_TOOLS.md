@@ -8,7 +8,7 @@ Web-based Redis management interface for viewing and managing Redis cache data.
 
 ### Access
 
-- **URL**: http://127.0.0.1:8081 (or the host/port from `REDIS_COMMANDER_PORT` / `REDIS_COMMANDER_PUBLISH_HOST` in the repository root `.env`)
+- **URL (canonical):** `http://redis.localhost` — add **`redis.localhost`** to **`/etc/hosts`** (see repository root [`infra/traefik/README.md`](../../../infra/traefik/README.md)). Traefik is started with **`make docker-up`** (dev overlay). If **`TRAEFIK_HTTP_PORT`** is not **80**, include the port (e.g. `http://redis.localhost:9080`).
 - **Username / password**: `REDIS_COMMANDER_HTTP_USER` / `REDIS_COMMANDER_HTTP_PASSWORD` (see repository root `.env.example`; dev overlay supplies non-production defaults if unset)
 
 ### Features
@@ -28,13 +28,13 @@ Web-based Redis management interface for viewing and managing Redis cache data.
    ```
    Or explicitly:
    ```bash
-   docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up -d
+   docker compose --env-file .env -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.dev.yml up -d
    ```
 
 2. Access Redis Commander:
    ```bash
    make docker-open-redis-commander
-   # Or open http://127.0.0.1:8081
+   # Or open http://redis.localhost (default Traefik on host port 80)
    ```
 
 3. Log in with the credentials from your **repository root** `.env` (or the dev-overlay defaults documented in `.env.example`).
@@ -60,7 +60,7 @@ Web-based PostgreSQL administration and development platform.
 
 ### Access
 
-- **URL**: http://127.0.0.1:5050 (or `PGADMIN_PUBLISH_PORT` / `PGADMIN_PUBLISH_HOST`)
+- **URL (canonical):** `http://pgadmin.localhost` — add **`pgadmin.localhost`** to **`/etc/hosts`** (see [`infra/traefik/README.md`](../../../infra/traefik/README.md)). If **`TRAEFIK_HTTP_PORT`** is not **80**, include the port.
 - **Email / password**: `PGADMIN_DEFAULT_EMAIL` / `PGADMIN_DEFAULT_PASSWORD` in the repository root `.env`
 
 ### Features
@@ -80,7 +80,7 @@ Web-based PostgreSQL administration and development platform.
    ```
    Or:
    ```bash
-   docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml up -d
+   docker compose --env-file .env -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.dev.yml up -d
    ```
 
 2. Access pgAdmin:
@@ -150,13 +150,13 @@ make docker-logs-pgadmin
 ### Redis Commander won't connect
 
 - Ensure Redis container is running: `docker ps | grep chexi-redis`
-- Check Redis is healthy: `docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml ps chexi-redis`
+- Check Redis is healthy: `docker compose -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.dev.yml ps chexi-redis` (from repository root)
 - Verify Redis Commander logs: `make docker-logs-redis-commander`
 
 ### pgAdmin can't connect to database
 
 - Ensure database container is running: `docker ps | grep chexi-db`
-- Check database is healthy: `docker compose -f docker/docker-compose.yml -f docker/docker-compose.dev.yml ps chexi-db`
+- Check database is healthy: `docker compose -f infra/docker/docker-compose.yml -f infra/docker/docker-compose.dev.yml ps chexi-db` (from repository root)
 - Verify connection details:
   - Host: `chexi-db` (not `localhost` when connecting from the pgAdmin container)
   - Port: `5432`
@@ -164,11 +164,8 @@ make docker-logs-pgadmin
 
 ### Port conflicts
 
-Set alternate host ports via the **repository root** `.env`, for example:
+For **Traefik** (default HTTP entry for admin tools), set **`TRAEFIK_HTTP_PORT`** in the **repository root** `.env` if **port 80** is taken (for example **`9080`**).
 
-```env
-REDIS_COMMANDER_PORT=8082
-PGADMIN_PUBLISH_PORT=5051
-```
+For **Postgres** / **Redis** host publishes, use **`POSTGRES_PUBLISH_PORT`**, **`REDIS_PUBLISH_PORT`** as documented in the repository root `.env.example`.
 
-See comments in the repository root `.env.example`.
+For **direct** API/admin HTTP on loopback (**`8080`** / **`5174`**), use [`infra/docker/docker-compose.direct-http.yml`](../../../infra/docker/docker-compose.direct-http.yml) (see [`infra/docker/README.md`](../../../infra/docker/README.md)).

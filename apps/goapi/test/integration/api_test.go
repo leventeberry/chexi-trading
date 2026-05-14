@@ -18,6 +18,7 @@ import (
 	"goapi/initializers"
 	"goapi/internal/events"
 	authinfra "goapi/internal/infra/auth"
+	"goapi/internal/marketdata/state"
 	"goapi/internal/queue"
 	httpserver "goapi/internal/transport/httpserver"
 
@@ -63,7 +64,7 @@ func TestMain(m *testing.M) {
 	jwtMgr := authinfra.NewManager(deps.Config.JWT.Secret, deps.Config.JWT.AccessTokenMinutes)
 	recorder := events.NewPostgresRecorder(deps.DB)
 	webhookSync := queue.WebhookDeliverWithoutWorker(deps.Config, deps.RedisClient)
-	testContainer = container.NewContainer(deps.DB, deps.Cache, jwtMgr, recorder, deps.Config, deps.QueueEnqueue, deps.RedisQueue, webhookSync)
+	testContainer = container.NewContainer(deps.DB, deps.Cache, jwtMgr, recorder, deps.Config, deps.QueueEnqueue, deps.RedisQueue, webhookSync, state.New())
 
 	testRouter = httpserver.NewEngine(deps.Cache, deps.Config, testContainer)
 

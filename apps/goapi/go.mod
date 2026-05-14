@@ -24,6 +24,7 @@ require (
 require (
 	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
 )
 
 require (

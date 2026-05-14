@@ -4,7 +4,7 @@
 
 | Stack | Files | Purpose |
 |-------|--------|---------|
-| **Local development** | `docker-compose.yml` + `docker-compose.dev.yml` | Published DB/Redis on loopback, optional Redis Commander / pgAdmin, **dev defaults** for `APP_ENV`, `DB_SSLMODE`, and credentials (`make docker-up`, `make docker-all`). |
+| **Local development** | `docker-compose.yml` + `docker-compose.dev.yml` | Published DB/Redis on loopback, **Traefik** (`chexi-traefik`) for HTTP to API/admin/pgAdmin/Redis Commander on **`*.localhost`**, **dev defaults** for `APP_ENV`, `DB_SSLMODE`, and credentials (`make docker-up`, `make docker-all`). |
 | **Hardened baseline only** | `docker-compose.yml` | No admin UIs, DB/Redis not published by default. **`APP_ENV` and `DB_SSLMODE` must be set** (no insecure compose defaults). Use `make docker-up-baseline` with the **repository root** `.env`. |
 
 The dev overlay overrides `APP_ENV` / `DB_SSLMODE` with `${VAR:-…}` so local workflows work without listing every variable. The baseline uses `"${APP_ENV:?…}"` / `"${DB_SSLMODE:?…}"` so **baseline-only** deploys fail fast if those are missing from the environment.

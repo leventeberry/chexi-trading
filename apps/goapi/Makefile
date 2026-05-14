@@ -128,8 +128,8 @@ test-integration: ## Run local integration tests with Docker deps + clean DB
 	@echo "$(GREEN)Running local integration tests...$(NC)"
 	bash ./scripts/test_integration_local.sh
 
-test-e2e-docker: ## HTTP E2E against running Docker API (needs curl + python3; see docs/TESTING.md)
-	@echo "$(GREEN)Running Docker HTTP E2E (stack must already be up)...$(NC)"
+test-e2e-docker: ## HTTP E2E via E2E_BASE_URL (default http://api.localhost; needs curl + python3; see docs/TESTING.md)
+	@echo "$(GREEN)Running Docker HTTP E2E...$(NC)"
 	bash ./scripts/e2e_docker.sh
 
 docker-e2e: ## Rebuild/start dev stack then run HTTP E2E (set EMAIL_ENABLED=false in root .env for token signup)
@@ -253,15 +253,25 @@ docker-logs-pgadmin: ## View pgAdmin logs
 	@echo "$(GREEN)Viewing pgAdmin logs...$(NC)"
 	$(DOCKER_COMPOSE) $(DOCKER_ENV_FLAG) logs -f pgadmin
 
-docker-open-redis-commander: ## Open Redis Commander in browser
-	@echo "$(GREEN)Opening Redis Commander at http://localhost:8081$(NC)"
-	@echo "$(YELLOW)Credentials: REDIS_COMMANDER_HTTP_USER / REDIS_COMMANDER_HTTP_PASSWORD in repository root .env$(NC)"
-	@$(if $(shell which start 2>/dev/null),start http://localhost:8081,echo "Please open http://localhost:8081 in your browser")
+docker-open-redis-commander: ## Print Redis Commander URL (Traefik when monorepo stack)
+	@echo "$(YELLOW)Credentials: REDIS_COMMANDER_HTTP_USER / REDIS_COMMANDER_HTTP_PASSWORD (repository root .env)$(NC)"
+	@if [ -f "$(MONOREPO_MARKER)" ]; then \
+	  set -a; [ -f "$(DOCKER_ENV_FILE)" ] && . "$(DOCKER_ENV_FILE)"; set +a; \
+	  TF_PORT="$${TRAEFIK_HTTP_PORT:-80}"; \
+	  if [ "$$TF_PORT" = "80" ]; then echo "$(GREEN)http://redis.localhost$(NC) — add redis.localhost to /etc/hosts (see $(REPO_ROOT)/infra/traefik/README.md)"; else echo "$(GREEN)http://redis.localhost:$$TF_PORT$(NC) — add redis.localhost to /etc/hosts (see $(REPO_ROOT)/infra/traefik/README.md)"; fi; \
+	else \
+	  echo "$(GREEN)http://localhost:8081$(NC) (apps/goapi/docker compose; no Traefik in this stack)"; \
+	fi
 
-docker-open-pgadmin: ## Open pgAdmin in browser
-	@echo "$(GREEN)Opening pgAdmin at http://localhost:5050$(NC)"
-	@echo "$(YELLOW)Credentials: PGADMIN_DEFAULT_EMAIL / PGADMIN_DEFAULT_PASSWORD in repository root .env$(NC)"
-	@$(if $(shell which start 2>/dev/null),start http://localhost:5050,echo "Please open http://localhost:5050 in your browser")
+docker-open-pgadmin: ## Print pgAdmin URL (Traefik when monorepo stack)
+	@echo "$(YELLOW)Credentials: PGADMIN_DEFAULT_EMAIL / PGADMIN_DEFAULT_PASSWORD (repository root .env)$(NC)"
+	@if [ -f "$(MONOREPO_MARKER)" ]; then \
+	  set -a; [ -f "$(DOCKER_ENV_FILE)" ] && . "$(DOCKER_ENV_FILE)"; set +a; \
+	  TF_PORT="$${TRAEFIK_HTTP_PORT:-80}"; \
+	  if [ "$$TF_PORT" = "80" ]; then echo "$(GREEN)http://pgadmin.localhost$(NC) — add pgadmin.localhost to /etc/hosts (see $(REPO_ROOT)/infra/traefik/README.md)"; else echo "$(GREEN)http://pgadmin.localhost:$$TF_PORT$(NC) — add pgadmin.localhost to /etc/hosts (see $(REPO_ROOT)/infra/traefik/README.md)"; fi; \
+	else \
+	  echo "$(GREEN)http://localhost:5050$(NC) (apps/goapi/docker compose; no Traefik in this stack)"; \
+	fi
 
 # Database Commands
 db-migrate: ## Show migration notes (AutoMigrate on startup, or versioned SQL via migrate-sql-up)

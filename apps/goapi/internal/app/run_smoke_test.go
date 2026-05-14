@@ -11,6 +11,7 @@ import (
 	"goapi/internal/email"
 	"goapi/internal/events"
 	authinfra "goapi/internal/infra/auth"
+	"goapi/internal/marketdata/state"
 	"goapi/internal/queue"
 	queuejobs "goapi/internal/queue/jobs"
 	httpserver "goapi/internal/transport/httpserver"
@@ -54,7 +55,7 @@ func TestAppWiring_SmokeBuildServerWithoutPanic(t *testing.T) {
 	queuejobs.RegisterEmailHandlers(reg, email.FromConfig(cfg), cfg)
 	queuejobs.RegisterWebhookHandlers(reg, repositories.NewOrganizationWebhookRepository(db), cfg)
 	jobQ := queue.NewInlineQueue(reg, events.NoOpRecorder{}, cfg)
-	appContainer := container.NewContainer(db, cacheClient, jwtMgr, recorder, cfg, jobQ, nil, false)
+	appContainer := container.NewContainer(db, cacheClient, jwtMgr, recorder, cfg, jobQ, nil, false, state.New())
 
 	var routerErr interface{}
 	var routerHandler http.Handler

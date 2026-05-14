@@ -78,4 +78,11 @@ var (
 	ErrInvalidWebhookURL           = errors.New("invalid webhook url")
 	ErrInvalidWebhookEvents        = errors.New("invalid webhook events")
 	ErrOrganizationWebhookNotFound = errors.New("organization webhook not found")
+
+	ErrInvalidTradePlanSymbol    = errors.New("invalid symbol format")
+	ErrInvalidTradePlanDirection = errors.New("invalid direction; use LONG or SHORT")
+	ErrInvalidTradePlanGeometry  = errors.New("invalid stop/target geometry for direction")
+	ErrInvalidTradePlanSizing    = errors.New("position_size and max_risk_amount must be positive")
+	ErrInvalidTradePlanInput     = errors.New("thesis and strategy_name are required")
+	ErrTradePlanNotFound         = errors.New("trade plan not found")
 )

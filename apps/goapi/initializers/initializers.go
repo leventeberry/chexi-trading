@@ -136,6 +136,7 @@ func migrateDB(db *gorm.DB, cfg *config.Config) {
 		&models.OrganizationAPIKey{},
 		&models.OrganizationWebhook{},
 		&models.OrganizationWebhookDelivery{},
+		&models.TradePlan{},
 		// add future models here as needed,
 	); err != nil {
 		logger.Log.Fatal().Err(err).Msg("Failed to run database migrations")

@@ -127,6 +127,12 @@ type Config struct {
 	Webhooks struct {
 		EncryptionKey []byte // 32-byte AES key for secret_ciphertext; never log
 	}
+	// CoinbaseExchangeWS configures optional public ticker ingestion (no private keys).
+	CoinbaseExchangeWS struct {
+		Enabled  bool
+		URL      string
+		Products []string
+	}
 	// OAuth (Google/GitHub). Secrets never logged.
 	OAuth struct {
 		GoogleEnabled      bool
@@ -139,6 +145,25 @@ type Config struct {
 		StateTTLMinutes    int
 		ExchangeTTLMinutes int
 	}
+}
+
+func parseCoinbaseWSProducts(raw string) []string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return []string{"BTC-USD", "ETH-USD", "SOL-USD"}
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		s := strings.TrimSpace(p)
+		if s != "" {
+			out = append(out, s)
+		}
+	}
+	if len(out) == 0 {
+		return []string{"BTC-USD", "ETH-USD", "SOL-USD"}
+	}
+	return out
 }
 
 var AppConfig *Config
@@ -373,6 +398,28 @@ func Load() *Config {
 		} else {
 			cfg.Webhooks.EncryptionKey = key
 		}
+	}
+
+	// Coinbase Exchange public WebSocket (optional; disabled by default — see COINBASE_WS_ENABLED).
+	cfg.CoinbaseExchangeWS.Enabled = os.Getenv("COINBASE_WS_ENABLED") == "true"
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("COINBASE_WS_ENVIRONMENT"))) {
+	case "production":
+		cfg.CoinbaseExchangeWS.URL = strings.TrimSpace(os.Getenv("COINBASE_WS_URL_PRODUCTION"))
+		if cfg.CoinbaseExchangeWS.URL == "" {
+			cfg.CoinbaseExchangeWS.URL = "wss://ws-feed.exchange.coinbase.com"
+		}
+	default:
+		cfg.CoinbaseExchangeWS.URL = strings.TrimSpace(os.Getenv("COINBASE_WS_URL_SANDBOX"))
+		if cfg.CoinbaseExchangeWS.URL == "" {
+			cfg.CoinbaseExchangeWS.URL = "wss://ws-feed-public.sandbox.exchange.coinbase.com"
+		}
+	}
+	// If COINBASE_WS_URL is set manually, it takes full precedence.
+	if override := strings.TrimSpace(os.Getenv("COINBASE_WS_URL")); override != "" {
+		cfg.CoinbaseExchangeWS.URL = override
+	}
+	if cfg.CoinbaseExchangeWS.Enabled {
+		cfg.CoinbaseExchangeWS.Products = parseCoinbaseWSProducts(os.Getenv("COINBASE_WS_PRODUCTS"))
 	}
 
 	// OAuth Google/GitHub (optional per provider)

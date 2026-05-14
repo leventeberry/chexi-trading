@@ -7,7 +7,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${ROOT_DIR}"
 
-E2E_BASE_URL="${E2E_BASE_URL:-http://127.0.0.1:8080}"
+E2E_BASE_URL="${E2E_BASE_URL:-http://api.localhost}"
 E2E_RUN_ID="${E2E_RUN_ID:-$(date +%s)-$$}"
 E2E_EMAIL="e2e-${E2E_RUN_ID}@example.com"
 E2E_PASSWORD="${E2E_PASSWORD:-E2eTest1!Pass}"

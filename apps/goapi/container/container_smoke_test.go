@@ -8,6 +8,7 @@ import (
 	"goapi/internal/email"
 	"goapi/internal/events"
 	authinfra "goapi/internal/infra/auth"
+	"goapi/internal/marketdata/state"
 	"goapi/internal/queue"
 	queuejobs "goapi/internal/queue/jobs"
 	"goapi/repositories"
@@ -48,6 +49,7 @@ func TestNewContainer_SmokeInitializesDependencies(t *testing.T) {
 		jobQ,
 		nil,
 		false,
+		state.New(),
 	)
 
 	if c == nil {

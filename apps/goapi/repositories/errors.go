@@ -16,6 +16,8 @@ var (
 
 	ErrOrganizationNoteNotFound = errors.New("organization note not found")
 
+	ErrTradePlanNotFound = errors.New("trade plan not found")
+
 	ErrOrganizationAPIKeyNotFound = errors.New("organization api key not found")
 
 	ErrOrganizationWebhookNotFound         = errors.New("organization webhook not found")

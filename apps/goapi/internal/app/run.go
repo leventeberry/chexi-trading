@@ -14,6 +14,8 @@ import (
 	"goapi/initializers"
 	"goapi/internal/events"
 	authinfra "goapi/internal/infra/auth"
+	"goapi/internal/marketdata/coinbase"
+	"goapi/internal/marketdata/state"
 	"goapi/internal/queue"
 	httpmiddleware "goapi/internal/transport/http/middleware"
 	httpserver "goapi/internal/transport/httpserver"
@@ -35,9 +37,47 @@ func Run() {
 	jwtMgr := authinfra.NewManager(deps.Config.JWT.Secret, deps.Config.JWT.AccessTokenMinutes)
 	recorder := events.NewPostgresRecorder(deps.DB)
 	webhookSync := queue.WebhookDeliverWithoutWorker(deps.Config, deps.RedisClient)
-	appContainer := container.NewContainer(deps.DB, deps.Cache, jwtMgr, recorder, deps.Config, deps.QueueEnqueue, deps.RedisQueue, webhookSync)
+	tickerStore := state.New()
+	appContainer := container.NewContainer(deps.DB, deps.Cache, jwtMgr, recorder, deps.Config, deps.QueueEnqueue, deps.RedisQueue, webhookSync, tickerStore)
 
 	workerCtx, workerCancel := context.WithCancel(context.Background())
+
+	coinbaseCtx, coinbaseCancel := context.WithCancel(context.Background())
+	var coinbaseWG sync.WaitGroup
+	if deps.Config.CoinbaseExchangeWS.Enabled {
+		logger.Log.Info().
+			Str("component", "coinbase_ws").
+			Str("url", deps.Config.CoinbaseExchangeWS.URL).
+			Int("product_count", len(deps.Config.CoinbaseExchangeWS.Products)).
+			Strs("products", deps.Config.CoinbaseExchangeWS.Products).
+			Msg("coinbase public websocket ticker ingestion enabled")
+	} else {
+		logger.Log.Info().
+			Str("component", "coinbase_ws").
+			Msg("coinbase public websocket ticker ingestion disabled (set COINBASE_WS_ENABLED=true to enable)")
+	}
+	if deps.Config.CoinbaseExchangeWS.Enabled {
+		coinbaseWG.Add(1)
+		go func() {
+			defer coinbaseWG.Done()
+			cfg := coinbase.DefaultTickerAdapterConfig(
+				deps.Config.CoinbaseExchangeWS.URL,
+				deps.Config.CoinbaseExchangeWS.Products,
+			)
+			ad := coinbase.NewTickerAdapter(cfg, func(ev coinbase.MarketTickerEvent) {
+				tickerStore.UpsertTicker(ev)
+				logger.Log.Debug().
+					Str("product_id", ev.ProductID).
+					Float64("price", ev.Price).
+					Msg("coinbase ticker")
+			})
+			ad.SetLogger(func(format string, args ...any) {
+				logger.Log.Warn().Str("component", "coinbase_ws").Msgf(format, args...)
+			})
+			ad.Run(coinbaseCtx)
+		}()
+	}
+
 	var workerWG sync.WaitGroup
 	if deps.QueueWorker != nil {
 		workerWG.Add(1)
@@ -73,6 +113,10 @@ func Run() {
 
 	<-quit
 	logger.Log.Info().Msg("Shutting down server...")
+
+	coinbaseCancel()
+	coinbaseWG.Wait()
+
 	httpmiddleware.ShutdownRateLimiter()
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)

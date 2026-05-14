@@ -105,6 +105,15 @@ func SetupRoutes(router *gin.Engine, c *container.Container, cfg *config.Config)
 		adminJobs.GET("/failed", handlers.AdminJobsFailed(adminJobsDeps))
 		adminJobs.POST("/:id/retry", handlers.AdminJobsRetry(adminJobsDeps))
 
+		v1.POST("/strategy/overnight-mean-reversion/score", handlers.ScoreOvernightMeanReversion())
+
+		// Static path must be registered before /market/tickers/:productID so "status" is not captured as a product ID.
+		v1.GET("/market/tickers/status", handlers.MarketTickerPipelineStatus(c.TickerStore, cfg))
+		v1.GET("/market/tickers", handlers.ListMarketTickers(c.TickerStore))
+		v1.GET("/market/tickers/:productID", handlers.GetMarketTicker(c.TickerStore))
+		v1.POST("/market/tickers/:productID/overnight-mean-reversion/score", handlers.ScoreMarketTickerOMR(c))
+
+		SetupTradePlanRoutes(v1, c)
 		SetupOrganizationRoutes(v1, c)
 		SetupUserRoutes(v1, c)
 	}

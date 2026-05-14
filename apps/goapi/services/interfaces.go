@@ -7,6 +7,13 @@ import (
 	"goapi/models"
 )
 
+// TradePlanService manages advisory manual trade plans for the authenticated user.
+type TradePlanService interface {
+	CreateTradePlan(ctx context.Context, userID uuid.UUID, input *CreateTradePlanInput) (*TradePlanDTO, error)
+	ListTradePlans(ctx context.Context, userID uuid.UUID) ([]TradePlanDTO, error)
+	GetTradePlan(ctx context.Context, userID, id uuid.UUID) (*TradePlanDTO, error)
+}
+
 // UserService defines the interface for user business logic
 type UserService interface {
 	CreateUser(ctx context.Context, input *CreateUserInput, actorID uuid.UUID, actorRole string) (*models.User, error)

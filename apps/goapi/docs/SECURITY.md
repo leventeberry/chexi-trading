@@ -125,7 +125,7 @@ The webhook HTTP client **rejects redirects** (`CheckRedirect`), so a “safe”
 | Stack | Files | When to use |
 |-------|--------|-------------|
 | **Hardened baseline** | `docker/docker-compose.yml` only (`make docker-up-baseline`) | Production‑like or minimal exposure: requires explicit **repository root** `.env` (**`APP_ENV`**, **`DB_SSLMODE`**, strong secrets). No published DB/Redis ports, no admin UIs by default. |
-| **Baseline + dev overlay** | `docker-compose.yml` + `docker-compose.dev.yml` (`make docker-up`) | **Local workstations** only: loopback ports, optional pgAdmin/Redis Commander, documented dev defaults. |
+| **Baseline + dev overlay** | `docker-compose.yml` + `docker-compose.dev.yml` (`make docker-up`) | **Local workstations** only: loopback DB/Redis ports, **Traefik** for HTTP UIs on **`*.localhost`**, pgAdmin/Redis Commander, documented dev defaults. |
 
 Image pins and upgrade workflow: [DOCKER.md](DOCKER.md).
 

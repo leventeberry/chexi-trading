@@ -14,6 +14,7 @@ import (
 	"goapi/internal/email"
 	"goapi/internal/events"
 	authinfra "goapi/internal/infra/auth"
+	"goapi/internal/marketdata/state"
 	"goapi/internal/queue"
 	queuejobs "goapi/internal/queue/jobs"
 	"goapi/repositories"
@@ -41,7 +42,7 @@ func openRouteSmokeDB(t *testing.T) *gorm.DB {
 	return db
 }
 
-func buildRouteSmokeRouter(t *testing.T) (*gin.Engine, *authinfra.Manager) {
+func buildRouteSmokeRouter(t *testing.T) (*gin.Engine, *authinfra.Manager, *container.Container) {
 	t.Helper()
 
 	gin.SetMode(gin.TestMode)
@@ -69,17 +70,18 @@ func buildRouteSmokeRouter(t *testing.T) (*gin.Engine, *authinfra.Manager) {
 		jobQ,
 		nil,
 		false,
+		state.New(),
 	)
 	c.HealthService = routeTestHealthService{}
 
 	SetupRoutes(router, c, cfg)
-	return router, jwt
+	return router, jwt, c
 }
 
 func TestSetupRoutes_RegistersCorePublicRoutes(t *testing.T) {
 	t.Parallel()
 
-	router, _ := buildRouteSmokeRouter(t)
+	router, _, _ := buildRouteSmokeRouter(t)
 
 	want := [][2]string{
 		{http.MethodGet, "/"},
@@ -87,6 +89,11 @@ func TestSetupRoutes_RegistersCorePublicRoutes(t *testing.T) {
 		{http.MethodPost, "/api/v1/login"},
 		{http.MethodPost, "/api/v1/login/verify-mfa"},
 		{http.MethodPost, "/api/v1/register"},
+		{http.MethodPost, "/api/v1/strategy/overnight-mean-reversion/score"},
+		{http.MethodGet, "/api/v1/market/tickers/status"},
+		{http.MethodGet, "/api/v1/market/tickers"},
+		{http.MethodGet, "/api/v1/market/tickers/:productID"},
+		{http.MethodPost, "/api/v1/market/tickers/:productID/overnight-mean-reversion/score"},
 		{http.MethodPost, "/api/v1/oauth/complete"},
 		{http.MethodGet, "/api/v1/oauth/:provider/start"},
 		{http.MethodGet, "/api/v1/oauth/:provider/callback"},
@@ -102,7 +109,7 @@ func TestSetupRoutes_RegistersCorePublicRoutes(t *testing.T) {
 func TestSetupRoutes_ProtectedUserRoutesRequireAuth(t *testing.T) {
 	t.Parallel()
 
-	router, _ := buildRouteSmokeRouter(t)
+	router, _, _ := buildRouteSmokeRouter(t)
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/users/me", nil)
@@ -117,12 +124,19 @@ func TestSetupRoutes_ProtectedUserRoutesRequireAuth(t *testing.T) {
 	if w.Code != http.StatusUnauthorized {
 		t.Fatalf("GET /api/v1/organizations without auth = %d, want 401", w.Code)
 	}
+
+	w = httptest.NewRecorder()
+	req = httptest.NewRequest(http.MethodGet, "/api/v1/trade-plans", nil)
+	router.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("GET /api/v1/trade-plans without auth = %d, want 401", w.Code)
+	}
 }
 
 func TestSetupRoutes_AdminRoutesRequireAdminAndNotPublic(t *testing.T) {
 	t.Parallel()
 
-	router, jwt := buildRouteSmokeRouter(t)
+	router, jwt, _ := buildRouteSmokeRouter(t)
 
 	// Not publicly exposed: unauthenticated request must be rejected.
 	w := httptest.NewRecorder()

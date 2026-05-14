@@ -337,7 +337,7 @@ make docker-logs-api
 
 ### Baseline vs local dev overlay
 
-- **`docker/docker-compose.yml` (baseline)** — Hardened defaults: **no** weak credential fallbacks, **no** published Postgres/Redis ports, **no** admin web UIs. Requires explicit `POSTGRES_*`, `DB_*`, `JWT_SECRET`, **`APP_ENV`**, and **`DB_SSLMODE`** (e.g. via `--env-file ../../.env` from `apps/goapi`, or use the monorepo root `Makefile`). The baseline does **not** default `APP_ENV` to `development` or `DB_SSLMODE` to `disable` (avoids accidental insecure deploys). API binds to **127.0.0.1** by default (`API_PUBLISH_HOST` / `API_PUBLISH_PORT`). Adds container hardening (`no-new-privileges`, `cap_drop: ALL`, read-only API root + `/tmp` tmpfs). Images use **pinned tags** (Postgres, Redis; see [docs/DOCKER.md](docs/DOCKER.md)).
+- **`docker/docker-compose.yml` (baseline)** — Hardened defaults: **no** weak credential fallbacks, **no** published Postgres/Redis ports, **no** admin web UIs. Requires explicit `POSTGRES_*`, `DB_*`, `JWT_SECRET`, **`APP_ENV`**, and **`DB_SSLMODE`** (e.g. via `--env-file ../../.env` from `apps/goapi`, or use the monorepo root `Makefile`). The baseline does **not** default `APP_ENV` to `development` or `DB_SSLMODE` to `disable` (avoids accidental insecure deploys). In the monorepo **infra** baseline, the API is **not** published on the host by default (use Traefik with the dev overlay, or add the **direct-http** overlay). Adds container hardening (`no-new-privileges`, `cap_drop: ALL`, read-only API root + `/tmp` tmpfs). Images use **pinned tags** (Postgres, Redis; see [docs/DOCKER.md](docs/DOCKER.md)).
 - **`docker/docker-compose.dev.yml` (overlay)** — Local ergonomics: publishes **127.0.0.1** ports for Postgres/Redis, optional **Redis Commander** and **pgAdmin**, and convenience defaults (`chexi_dev` / documented passwords) **only when this file is combined with the baseline**. The overlay restores **`APP_ENV=${APP_ENV:-development}`** and **`DB_SSLMODE=${DB_SSLMODE:-disable}`** for local use.
 
 **Local development (recommended):** `make docker-up` uses **both** compose files. Optionally create the **repository root** `.env` from **[`.env.example`](../../.env.example)** to override passwords, JWT, and ports.
@@ -378,11 +378,13 @@ make docker-logs-api
    ```
 
 5. **Access the API and tools**
-   - API: `http://127.0.0.1:8080` (or `localhost`)
-   - Swagger UI: `http://127.0.0.1:8080/swagger/index.html`
+   - API (Traefik, default): `http://api.localhost` — add **`api.localhost`** to **`/etc/hosts`** (see [`infra/traefik/README.md`](../../infra/traefik/README.md)). If **`TRAEFIK_HTTP_PORT`** is not **80**, include the port.
+   - Admin UI: `http://admin.localhost` or `http://web.localhost` (same-origin **`/api`** via Traefik)
+   - Swagger UI: `http://api.localhost/swagger/index.html`
    - PostgreSQL (host): `127.0.0.1:5432` — user/password/db match `POSTGRES_*` in the repository root `.env` or dev defaults (`chexi_dev` / see root `.env.example`)
-   - **Redis Commander**: `http://127.0.0.1:8081` — credentials from `REDIS_COMMANDER_HTTP_*` in the repository root `.env`
-   - **pgAdmin**: `http://127.0.0.1:5050` — `PGADMIN_DEFAULT_EMAIL` / `PGADMIN_DEFAULT_PASSWORD`
+   - **Redis Commander**: `http://redis.localhost` — credentials from `REDIS_COMMANDER_HTTP_*` in the repository root `.env`; add **`redis.localhost`** to **`/etc/hosts`**
+   - **pgAdmin**: `http://pgadmin.localhost` — `PGADMIN_DEFAULT_EMAIL` / `PGADMIN_DEFAULT_PASSWORD`; add **`pgadmin.localhost`** to **`/etc/hosts`**
+   - **Optional direct HTTP:** [`infra/docker/docker-compose.direct-http.yml`](../../infra/docker/docker-compose.direct-http.yml) — `http://127.0.0.1:8080` (API) and `http://127.0.0.1:5174` (admin nginx)
 
    **Security:** Dev-overlay defaults are for **local workstations** only. Use `make docker-up-baseline` and strong secrets for tighter deployments.
 
@@ -429,13 +431,14 @@ Optional overrides: `docker compose ... --env-file ../../.env ...`
 ### Docker Compose Services
 
 **Baseline (`docker-compose.yml`):**
-- **`api`**: Go API (published on loopback; see `API_PUBLISH_HOST` / `API_PUBLISH_PORT`)
+- **`api`**: Go API (HTTP via Traefik **`api.localhost`** by default; optional loopback publish with **direct-http** overlay — see monorepo [`infra/docker/README.md`](../../infra/docker/README.md))
 - **`db`**: PostgreSQL 16 (pinned image tag, e.g. `postgres:16.13-alpine`; not published without dev overlay)
 - **`redis`**: Redis 7 (pinned tag; not published without dev overlay)
 
 **With dev overlay (`docker-compose.dev.yml`):**
-- **`redis-commander`**: Redis web UI (loopback)
-- **`pgadmin`**: PostgreSQL web UI (loopback)
+- **`chexi-traefik`**: HTTP ingress for **`api.localhost`**, **`admin.localhost`**, **`pgadmin.localhost`**, **`redis.localhost`** (see repository [`infra/traefik/README.md`](../../infra/traefik/README.md))
+- **`redis-commander`**: Redis web UI (via Traefik only; not published on its own host port)
+- **`pgadmin`**: PostgreSQL web UI (via Traefik only; not published on its own host port)
 
 ### Local database credentials (dev overlay)
 

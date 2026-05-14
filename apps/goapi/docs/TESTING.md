@@ -333,11 +333,11 @@ The wrapper script **`scripts/test_integration_local.sh`** exports **`EMAIL_ENAB
 
 ### Docker E2E (HTTP)
 
-Black-box checks against the **real API URL** published by the dev Docker stack (`127.0.0.1:8080` by default). No host Postgres access, no mocks, no Go test binary — only `curl` and `python3` (stdlib JSON).
+Black-box checks against the **real API URL** served by Traefik (**`http://api.localhost`** by default, host port **80**). No host Postgres access, no mocks, no Go test binary — only `curl` and `python3` (stdlib JSON). If you use the optional **direct-http** compose overlay, set **`E2E_BASE_URL=http://127.0.0.1:8080`** instead.
 
 | Command | What it does |
 |--------|----------------|
-| `make test-e2e-docker` | Runs [`scripts/e2e_docker.sh`](../scripts/e2e_docker.sh). **Requires the stack to already be up** (`make docker-up` or `make docker-all`). |
+| `make test-e2e-docker` | Brings the monorepo dev stack up (including Traefik), recreates **`chexi-api`** with email mocks, then runs [`scripts/e2e_docker.sh`](../scripts/e2e_docker.sh). |
 | `make docker-e2e` | `make docker-all` then `make test-e2e-docker`. |
 
 **Not the same as `make test-integration`:** integration tests use a **separate** Compose project (`chexi_trading_integration`), reset the DB via `psql` inside the container, and run **`go test -tags=integration`**. Docker E2E hits whatever database your **main** dev stack is using.
@@ -346,7 +346,7 @@ Black-box checks against the **real API URL** published by the dev Docker stack 
 
 1. **`curl`** and **`python3`** on the PATH.
 2. **`EMAIL_ENABLED=false`** in the **repository root** `.env` (or equivalent) so registration returns `token.jwt_token` / `token.refresh_token` immediately. With `EMAIL_ENABLED=true`, the API returns a verification message instead of tokens; the script exits with a hint.
-3. Optional: **`E2E_BASE_URL`** if the API is not at `http://127.0.0.1:8080` (must match `API_PUBLISH_HOST` / `API_PUBLISH_PORT` in Compose).
+3. Optional: **`E2E_BASE_URL`** if the API is not at **`http://api.localhost`** (for example **`http://api.localhost:9080`** when **`TRAEFIK_HTTP_PORT=9080`**, or **`http://127.0.0.1:8080`** with the **direct-http** compose overlay).
 
 **Covered flow (happy paths + one auth denial):** `GET /health` (healthy) → register → login → refresh → `GET /api/v1/users/me` → create organization → create org API key (validates `key_prefix`, does not print secret) → list org API keys → `GET /api/v1/users/me` without `Authorization` (expect 401).
 

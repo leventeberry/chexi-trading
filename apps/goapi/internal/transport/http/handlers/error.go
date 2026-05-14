@@ -133,6 +133,17 @@ func handleServiceError(c *gin.Context, err error) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid webhook events"})
 	case errors.Is(err, services.ErrOrganizationWebhookNotFound):
 		c.JSON(http.StatusNotFound, gin.H{"error": "Webhook not found"})
+	case errors.Is(err, services.ErrInvalidTradePlanSymbol):
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	case errors.Is(err, services.ErrInvalidTradePlanDirection):
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	case errors.Is(err, services.ErrInvalidTradePlanGeometry):
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	case errors.Is(err, services.ErrInvalidTradePlanSizing),
+		errors.Is(err, services.ErrInvalidTradePlanInput):
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	case errors.Is(err, services.ErrTradePlanNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"error": "Trade plan not found"})
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 	}
