@@ -1,6 +1,7 @@
 import {
   Construction,
   LayoutDashboard,
+  ScanLine,
   Monitor,
   Bug,
   ListTodo,
@@ -56,6 +57,11 @@ export const sidebarData: SidebarData = {
           title: 'Dashboard',
           url: '/',
           icon: LayoutDashboard,
+        },
+        {
+          title: 'OMR Scanner',
+          url: '/omr-scanner',
+          icon: ScanLine,
         },
         {
           title: 'Tasks',

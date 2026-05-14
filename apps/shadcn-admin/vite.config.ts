@@ -25,6 +25,15 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    // Same-origin `/api/*` during `vite dev` → Go API (PORT defaults to 8080 in root `.env`).
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8080',
+        changeOrigin: true,
+      },
+    },
+  },
   test: {
     silent: 'passed-only',
     unstubEnvs: true,
