@@ -24,6 +24,13 @@ LICENSE
 .DS_Store
 Thumbs.db
 
+# Node (monorepo web image context)
+**/node_modules
+**/dist
+
+# Go API tree not needed for admin static image
+apps/goapi
+
 # Build artifacts
 goapi
 *.exe

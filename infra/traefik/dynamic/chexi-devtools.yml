@@ -1,0 +1,23 @@
+# Dev-only UIs behind Traefik (default TRAEFIK_HTTP_PORT=80 on the host).
+# Add to /etc/hosts: 127.0.0.1 pgadmin.localhost redis.localhost
+http:
+  routers:
+    chexi-devtools-pgadmin:
+      rule: Host(`pgadmin.localhost`)
+      entryPoints:
+        - web
+      service: chexi-pgadmin
+    chexi-devtools-redis-commander:
+      rule: Host(`redis.localhost`)
+      entryPoints:
+        - web
+      service: chexi-redis-commander
+  services:
+    chexi-pgadmin:
+      loadBalancer:
+        servers:
+          - url: http://pgadmin:80
+    chexi-redis-commander:
+      loadBalancer:
+        servers:
+          - url: http://redis-commander:8081

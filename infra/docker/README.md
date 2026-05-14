@@ -1,6 +1,6 @@
 # chexi-trading Docker (infra)
 
-Compose stack for **chexi-trading** local development: services **`chexi-db`**, **`chexi-redis`**, **`chexi-api`**, plus dev-only **Redis Commander** and **pgAdmin** when using the dev overlay.
+Compose stack for **chexi-trading** local development: services **`chexi-db`**, **`chexi-redis`**, **`chexi-api`**, **`chexi-web`** (admin UI), **`chexi-traefik`**, plus dev-only **Redis Commander** and **pgAdmin** when using the dev overlay.
 
 From the monorepo root, use:
 
@@ -11,9 +11,29 @@ make docker-down
 
 For custom local values, copy `.env.example` to `.env` at the repository root. That file is shared with the Go API and the admin Vite app; do not keep separate `.env` copies under `apps/`.
 
-## Traefik (optional)
+## HTTP (canonical): Traefik + `*.localhost`
 
-To put the API behind a local reverse proxy (host **`api.localhost`**, default **`http://api.localhost:9080`**), use the third Compose file or `make docker-up-traefik`. See `infra/traefik/README.md`.
+Traefik publishes **`TRAEFIK_HTTP_PORT`** on the host (default **80**). Use:
+
+- `http://api.localhost`
+- `http://admin.localhost` or `http://web.localhost` (admin SPA; same-origin **`/api`**)
+- `http://pgadmin.localhost`
+- `http://redis.localhost`
+
+Add the hostnames to **`/etc/hosts`** (see [`infra/traefik/README.md`](../traefik/README.md)).
+
+**Optional:** publish API and admin on loopback ports (**`8080`** / **`5174`**) for scripts, CI, or debugging:
+
+```sh
+docker compose --env-file .env \
+  -f infra/docker/docker-compose.yml \
+  -f infra/docker/docker-compose.dev.yml \
+  -f infra/docker/docker-compose.direct-http.yml up -d
+```
+
+See [`docker-compose.direct-http.yml`](docker-compose.direct-http.yml).
+
+**`make dev-local-api`:** the **`chexi-api`** container is stopped and the API runs on the host; Traefik can no longer reach the API at **`chexi-api:8080`**. Use **`http://127.0.0.1:${PORT:-8080}`** for the API (and optionally the **direct-http** overlay if you need published ports).
 
 ## Database passwords
 

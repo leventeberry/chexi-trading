@@ -52,8 +52,6 @@ services:
       context: ../../apps/goapi
       dockerfile: docker/Dockerfile
     restart: unless-stopped
-    ports:
-      - "${API_PUBLISH_HOST:-127.0.0.1}:${API_PUBLISH_PORT:-8080}:8080"
     environment:
       # Writable home for any runtime cache (container is read-only except tmpfs /tmp).
       HOME: /tmp
@@ -128,6 +126,16 @@ services:
       MFA_RECOVERY_CODE_COUNT: ${MFA_RECOVERY_CODE_COUNT:-}
       MFA_TOTP_ISSUER: ${MFA_TOTP_ISSUER:-}
       WEBHOOK_ENCRYPTION_KEY: ${WEBHOOK_ENCRYPTION_KEY:-}
+      # Coinbase REST + optional public WebSocket tickers (must be listed or root .env never reaches the API)
+      COINBASE_API_KEY: ${COINBASE_API_KEY:-}
+      COINBASE_API_SECRET: ${COINBASE_API_SECRET:-}
+      COINBASE_API_PASSPHRASE: ${COINBASE_API_PASSPHRASE:-}
+      COINBASE_WS_ENABLED: ${COINBASE_WS_ENABLED:-}
+      COINBASE_WS_URL: ${COINBASE_WS_URL:-}
+      COINBASE_WS_ENVIRONMENT: ${COINBASE_WS_ENVIRONMENT:-}
+      COINBASE_WS_URL_SANDBOX: ${COINBASE_WS_URL_SANDBOX:-}
+      COINBASE_WS_URL_PRODUCTION: ${COINBASE_WS_URL_PRODUCTION:-}
+      COINBASE_WS_PRODUCTS: ${COINBASE_WS_PRODUCTS:-}
       OAUTH_GOOGLE_ENABLED: ${OAUTH_GOOGLE_ENABLED:-}
       OAUTH_GITHUB_ENABLED: ${OAUTH_GITHUB_ENABLED:-}
       OAUTH_GOOGLE_CLIENT_ID: ${OAUTH_GOOGLE_CLIENT_ID:-}
@@ -154,6 +162,23 @@ services:
     read_only: true
     tmpfs:
       - /tmp
+
+  chexi-web:
+    image: chexi-trading-web:latest
+    build:
+      context: ../..
+      dockerfile: apps/shadcn-admin/docker/Dockerfile
+      args:
+        VITE_GOAPI_BASE_URL: ${VITE_GOAPI_BASE_URL:-}
+        VITE_CLERK_PUBLISHABLE_KEY: ${VITE_CLERK_PUBLISHABLE_KEY:-}
+    restart: unless-stopped
+    depends_on:
+      chexi-api:
+        condition: service_started
+    networks:
+      - chexi_trading_network
+    security_opt:
+      - no-new-privileges:true
 
 volumes:
   chexi_trading_postgres_data:

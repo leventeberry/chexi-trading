@@ -8,7 +8,6 @@ DOCKER_COMPOSE_DEV := infra/docker/docker-compose.dev.yml
 DOCKER_COMPOSE := docker compose -f $(DOCKER_COMPOSE_BASE) -f $(DOCKER_COMPOSE_DEV)
 DOCKER_COMPOSE_STRICT := docker compose -f $(DOCKER_COMPOSE_BASE)
 DOCKER_COMPOSE_LEGACY := COMPOSE_PROJECT_NAME=docker docker compose -f $(DOCKER_COMPOSE_BASE) -f $(DOCKER_COMPOSE_DEV)
-DOCKER_COMPOSE_TRAEFIK := docker compose -f $(DOCKER_COMPOSE_BASE) -f $(DOCKER_COMPOSE_DEV) -f infra/docker/docker-compose.traefik.yml
 DOCKER_ENV_FILE := $(if $(wildcard $(ROOT_ENV_FILE)),$(ROOT_ENV_FILE),)
 DOCKER_ENV_FLAG := $(if $(DOCKER_ENV_FILE),--env-file $(DOCKER_ENV_FILE),)
 
@@ -17,7 +16,7 @@ DOCKER_ENV_FLAG := $(if $(DOCKER_ENV_FILE),--env-file $(DOCKER_ENV_FILE),)
 	test-integration test-e2e-docker docker-e2e test-coverage clean swagger swag \
 	docker-build docker-up docker-up-baseline docker-down docker-down-baseline \
 	docker-down-volumes docker-logs docker-logs-api docker-logs-db docker-logs-redis \
-	docker-up-traefik docker-restart docker-rebuild docker-ps docker-shell-api docker-shell-db \
+	docker-restart docker-rebuild docker-ps docker-shell-api docker-shell-db \
 	docker-shell-redis docker-logs-redis-commander docker-logs-pgadmin \
 	docker-open-redis-commander docker-open-pgadmin db-migrate migrate-sql-up \
 	migrate-sql-down db-seed dev-docker setup prod-build all docker-all
@@ -30,8 +29,7 @@ help: ## Show monorepo commands
 	@echo "  make dev-local-api    Start Compose, stop container api, run Go API on host (uses root .env PORT)"
 	@echo "  make api-dev          Run the Go API on host only (expects DB/Redis reachable; often after docker-up)"
 	@echo "  make web-dev          Run the admin UI (apps/shadcn-admin, Vite)"
-	@echo "  make docker-up        Start Docker Compose from the repo root"
-	@echo "  make docker-up-traefik  Same as docker-up plus Traefik (api.localhost → API)"
+	@echo "  make docker-up        Start Docker Compose (includes Traefik; see infra/traefik/README.md)"
 	@echo "  make test             Run aggregate tests"
 	@echo "  make ci               Run aggregate CI gates"
 	@echo ""
@@ -56,6 +54,7 @@ dev: docker-up ## Full local stack: DB, Redis, admin tools, and API in Docker
 
 dev-local-api: docker-up ## Compose deps + API on host (stops the api service to avoid port 8080 clash)
 	@echo "Stopping containerized chexi-api so host process can bind to PORT (see root .env)..."
+	@echo "Note: Traefik still targets the chexi-api container; use http://127.0.0.1:\$$PORT for the host API (see infra/docker/README.md)."
 	@$(DOCKER_COMPOSE) $(DOCKER_ENV_FLAG) stop chexi-api
 	@$(MAKE) api-dev
 
@@ -86,6 +85,7 @@ test-integration:
 	@$(MAKE) -C $(API_DIR) test-integration
 
 test-e2e-docker:
+	@$(DOCKER_COMPOSE) $(DOCKER_ENV_FLAG) up -d
 	@EMAIL_ENABLED=false EMAIL_DRIVER=mock EMAIL_PROVIDER=mock EMAIL_LOG_INCLUDE_BODY=false RESEND_API_KEY= $(DOCKER_COMPOSE) $(DOCKER_ENV_FLAG) up -d --force-recreate chexi-api
 	@$(MAKE) -C $(API_DIR) test-e2e-docker
 
@@ -94,9 +94,6 @@ docker-build:
 
 docker-up:
 	$(DOCKER_COMPOSE) $(DOCKER_ENV_FLAG) up -d
-
-docker-up-traefik:
-	$(DOCKER_COMPOSE_TRAEFIK) $(DOCKER_ENV_FLAG) up -d
 
 docker-up-baseline:
 	@test -n "$(DOCKER_ENV_FILE)" || (echo "Create .env from .env.example before running the hardened baseline stack" && exit 1)
@@ -153,17 +150,15 @@ docker-open-redis-commander:
 	@set -a; \
 	if [ -f "$(ROOT_ENV_FILE)" ]; then . "$(ROOT_ENV_FILE)"; fi; \
 	set +a; \
-	RC_PORT="$${REDIS_COMMANDER_PORT:-8081}"; \
-	RC_HOST="$${REDIS_COMMANDER_PUBLISH_HOST:-127.0.0.1}"; \
-	echo "Open Redis Commander at http://$${RC_HOST}:$${RC_PORT}"
+	TF_PORT="$${TRAEFIK_HTTP_PORT:-80}"; \
+	if [ "$$TF_PORT" = "80" ]; then echo "Open Redis Commander at http://redis.localhost"; else echo "Open Redis Commander at http://redis.localhost:$$TF_PORT"; fi
 
 docker-open-pgadmin:
 	@set -a; \
 	if [ -f "$(ROOT_ENV_FILE)" ]; then . "$(ROOT_ENV_FILE)"; fi; \
 	set +a; \
-	PGA_PORT="$${PGADMIN_PUBLISH_PORT:-5050}"; \
-	PGA_HOST="$${PGADMIN_PUBLISH_HOST:-127.0.0.1}"; \
-	echo "Open pgAdmin at http://$${PGA_HOST}:$${PGA_PORT}"
+	TF_PORT="$${TRAEFIK_HTTP_PORT:-80}"; \
+	if [ "$$TF_PORT" = "80" ]; then echo "Open pgAdmin at http://pgadmin.localhost"; else echo "Open pgAdmin at http://pgadmin.localhost:$$TF_PORT"; fi
 
 dev-docker: docker-up docker-logs-api
 

@@ -24,7 +24,7 @@ Monorepo for **chexi-trading**: crypto trading analysis with a Go API, data inge
    make docker-up
    ```
 
-3. API health: `http://127.0.0.1:${API_PUBLISH_PORT:-8080}/health` (see `.env.example`).
+3. API health: `http://api.localhost/health` (Traefik on host port **80** by default; add `api.localhost` to `/etc/hosts` if needed — see [`infra/traefik/README.md`](infra/traefik/README.md)). Optional direct publish: [`infra/docker/docker-compose.direct-http.yml`](infra/docker/docker-compose.direct-http.yml).
 
 - **`make dev`** — same as `make docker-up` (API runs in the `chexi-api` service container).
 - **`make dev-local-api`** — Compose + run the Go binary on the host (stops the `chexi-api` container to avoid port clashes).

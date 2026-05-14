@@ -1,6 +1,7 @@
 # Traefik file provider — routes HTTP on entrypoint `web` (container :80) to the API.
 # Use Host `api.localhost` and map it to 127.0.0.1 in /etc/hosts, or pass the header when testing:
-#   curl -H "Host: api.localhost" http://127.0.0.1:${TRAEFIK_HTTP_PORT:-9080}/health
+#   curl -H "Host: api.localhost" http://127.0.0.1/health
+#   (default Traefik HTTP is published on host port 80; override with TRAEFIK_HTTP_PORT.)
 http:
   routers:
     chexi-api:

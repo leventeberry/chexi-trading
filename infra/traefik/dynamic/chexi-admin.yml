@@ -1,0 +1,36 @@
+# Admin SPA (chexi-web) + same-origin /api via Traefik (single browser origin).
+# Add to /etc/hosts: 127.0.0.1 admin.localhost web.localhost
+# Default Traefik publish is host port 80, e.g. http://admin.localhost
+#
+# chexi-api service is defined in chexi-api.yml; only chexi-web is declared here.
+http:
+  routers:
+    chexi-admin-api:
+      rule: Host(`admin.localhost`) && PathPrefix(`/api`)
+      entryPoints:
+        - web
+      service: chexi-api
+      priority: 100
+    chexi-admin-ui:
+      rule: Host(`admin.localhost`)
+      entryPoints:
+        - web
+      service: chexi-web
+      priority: 1
+    chexi-web-alias-api:
+      rule: Host(`web.localhost`) && PathPrefix(`/api`)
+      entryPoints:
+        - web
+      service: chexi-api
+      priority: 100
+    chexi-web-alias-ui:
+      rule: Host(`web.localhost`)
+      entryPoints:
+        - web
+      service: chexi-web
+      priority: 1
+  services:
+    chexi-web:
+      loadBalancer:
+        servers:
+          - url: http://chexi-web:80
